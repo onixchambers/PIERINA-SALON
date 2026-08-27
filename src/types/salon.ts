@@ -61,7 +61,7 @@ export type EstadoCita = 'Pendiente' | 'Confirmada' | 'Rechazada' | 'Completada'
 
 export interface Cita {
   id: string;
-  codigo: string; // Ej: "LUM-8492"
+  codigo: string; // Ej: "PIER-8492"
   clienteNombre: string;
   clienteTelefono: string;
   clienteNotas?: string;

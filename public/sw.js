@@ -1,8 +1,10 @@
-const CACHE_NAME = 'lumina-spa-v1';
+const CACHE_NAME = 'pierina-salon-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
-  '/favicon.ico',
+  '/logo-pierina.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

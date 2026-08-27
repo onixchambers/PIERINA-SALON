@@ -88,9 +88,9 @@ export default function AppointmentTracker({ citaId }: AppointmentTrackerProps) 
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Lumina Esthetique//Beauty App//ES',
+      'PRODID:-//Pierina Salon//Beauty App//ES',
       'BEGIN:VEVENT',
-      `UID:${cita.id}@lumina.app`,
+      `UID:${cita.id}@pierinasalon.app`,
       `DTSTAMP:${startDate}Z`,
       `DTSTART:${startDate}`,
       `DTEND:${endDate}`,

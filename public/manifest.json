@@ -1,7 +1,7 @@
 {
-  "name": "Lumina Esthétique & Spa",
-  "short_name": "Lumina Spa",
-  "description": "Sistema de gestión y reserva de citas para salón de belleza y estética",
+  "name": "Pierina Salón",
+  "short_name": "Pierina Salón",
+  "description": "Pierina Salón - Cejas, Pestañas, Uñas y Cuidado Estético",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAF6F0",
@@ -12,13 +12,31 @@
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo-pierina.png",
+      "sizes": "600x600",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

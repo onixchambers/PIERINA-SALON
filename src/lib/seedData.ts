@@ -290,7 +290,7 @@ const fechaPasado = formatFecha(new Date(hoy.getTime() + 86400000 * 2));
 export const CITAS_INICIALES: Cita[] = [
   {
     id: 'cita-demo-1',
-    codigo: 'LUM-4192',
+    codigo: 'PIER-4192',
     clienteNombre: 'Mariana Gómez Lozano',
     clienteTelefono: '+525598765432',
     clienteNotas: 'Es mi primera vez. Prefiero tono rosa nude y cutícula sensible.',
@@ -309,7 +309,7 @@ export const CITAS_INICIALES: Cita[] = [
   },
   {
     id: 'cita-demo-2',
-    codigo: 'LUM-8821',
+    codigo: 'PIER-8821',
     clienteNombre: 'Daniela Alarcón',
     clienteTelefono: '+525576543210',
     clienteNotas: 'Solicito valoración para cambio de tono a cobrizo.',
@@ -328,7 +328,7 @@ export const CITAS_INICIALES: Cita[] = [
   },
   {
     id: 'cita-demo-3',
-    codigo: 'LUM-3310',
+    codigo: 'PIER-3310',
     clienteNombre: 'Patricia Trejo',
     clienteTelefono: '+525565432109',
     clienteNotas: 'Piel con tendencia grasa en zona T.',
@@ -347,7 +347,7 @@ export const CITAS_INICIALES: Cita[] = [
   },
   {
     id: 'cita-demo-4',
-    codigo: 'LUM-9945',
+    codigo: 'PIER-9945',
     clienteNombre: 'Andrea Valenzuela',
     clienteTelefono: '+525554321098',
     clienteNotas: 'Tensión acumulada en trapecios y cervicales.',

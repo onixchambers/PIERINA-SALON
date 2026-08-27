@@ -67,14 +67,14 @@ export default function LookupAppointmentModal({ isOpen, onClose }: LookupAppoin
 
         <form onSubmit={handleBuscar} className="mt-4">
           <label className="block text-xs font-bold text-[#5A4D48] mb-1.5">
-            Ingresa tu Código de Cita (ej. LUM-4192) o tu Teléfono:
+            Ingresa tu Código de Cita (ej. PIER-4192) o tu Teléfono:
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#8C7A70]" />
               <input
                 type="text"
-                placeholder="Código (LUM-...) o Teléfono"
+                placeholder="Código (PIER-...) o Teléfono"
                 value={criterio}
                 onChange={(e) => setCriterio(e.target.value)}
                 className="w-full rounded-xl border border-[#E6D7CB] bg-white py-2.5 pl-10 pr-3 text-sm text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"

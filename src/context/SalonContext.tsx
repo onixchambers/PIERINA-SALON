@@ -83,12 +83,12 @@ interface SalonContextType {
 const SalonContext = createContext<SalonContextType | null>(null);
 
 const STORAGE_KEYS = {
-  CITAS: 'lumina_citas_v2',
-  SERVICIOS: 'lumina_servicios_v2',
-  COLABORADORES: 'lumina_colaboradores_v2',
-  ESPECIALIDADES: 'lumina_especialidades_v2',
-  BLOQUEOS: 'lumina_bloqueos_v2',
-  CONFIG: 'lumina_config_v2',
+  CITAS: 'pierina_citas_v1',
+  SERVICIOS: 'pierina_servicios_v1',
+  COLABORADORES: 'pierina_colaboradores_v1',
+  ESPECIALIDADES: 'pierina_especialidades_v1',
+  BLOQUEOS: 'pierina_bloqueos_v1',
+  CONFIG: 'pierina_config_v1',
   SESION: 'pierina_usuario_sesion',
 };
 
@@ -117,6 +117,11 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   // 1. Cargar datos iniciales desde LocalStorage / Seeds
   useEffect(() => {
     try {
+      // Limpiar claves antiguas en caso de existir
+      ['lumina_citas_v2', 'lumina_servicios_v2', 'lumina_colaboradores_v2', 'lumina_especialidades_v2', 'lumina_bloqueos_v2', 'lumina_config_v2'].forEach((k) => {
+        localStorage.removeItem(k);
+      });
+
       // Restaurar sesión activa
       const storedSesion = sessionStorage.getItem(STORAGE_KEYS.SESION);
       if (storedSesion) {
@@ -134,7 +139,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
           const mergedConfig: ConfiguracionSalon = {
             ...CONFIG_INICIAL,
             ...conf,
-            nombreSalon: conf.nombreSalon && conf.nombreSalon !== 'Lumina Esthétique & Spa' ? conf.nombreSalon : 'Pierina Salón',
+            nombreSalon: 'Pierina Salón',
             eslogan: conf.eslogan && !conf.eslogan.includes('consciente') ? conf.eslogan : 'Cejas, pestañas y más',
             logoUrl: conf.logoUrl || '/logo-pierina.png',
             pinAdmin: conf.pinAdmin || '1234',
