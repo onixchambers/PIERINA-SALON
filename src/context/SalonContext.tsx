@@ -182,6 +182,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
             zonaHoraria: conf.zonaHoraria || 'America/Panama',
             horarioApertura: horarioAperturaMigrado,
             horarioCierre: horarioCierreMigrado,
+            firebaseConfig: conf.firebaseConfig || CONFIG_INICIAL.firebaseConfig,
           };
           setConfiguracion(mergedConfig);
           localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(mergedConfig));

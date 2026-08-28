@@ -36,6 +36,14 @@ export const CONFIG_INICIAL: ConfiguracionSalon = {
   moneda: '$',
   zonaHoraria: 'America/Panama',
   especialidades: ESPECIALIDADES_INICIALES,
+  firebaseConfig: {
+    apiKey: 'AIzaSyC2HdTRwA3rXLc6sXzj_GwM43Jpn3EGPbw',
+    authDomain: 'pierina-1ee38.firebaseapp.com',
+    projectId: 'pierina-1ee38',
+    storageBucket: 'pierina-1ee38.firebasestorage.app',
+    messagingSenderId: '128506779169',
+    appId: '1:128506779169:web:3b467a26a0253bcde87560',
+  },
 };
 
 export const SERVICIOS_INICIALES: Servicio[] = [
