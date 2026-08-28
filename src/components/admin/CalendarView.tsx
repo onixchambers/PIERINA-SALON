@@ -77,26 +77,26 @@ export default function CalendarView({
         };
       case 'Confirmada':
         return {
-          card: 'bg-emerald-500/20 border-emerald-500/80 text-emerald-950 backdrop-blur-xs',
-          badge: 'bg-emerald-600 text-white',
-          border: 'border-emerald-500',
+          card: 'bg-emerald-500/15 border-emerald-500/70 text-emerald-950 backdrop-blur-md shadow-xs',
+          badge: 'bg-emerald-600/80 text-white backdrop-blur-xs border border-emerald-400/40',
+          border: 'border-emerald-500/70',
         };
       case 'Completada':
         return {
-          card: 'bg-gray-400/20 border-gray-400/80 text-gray-900 backdrop-blur-xs',
-          badge: 'bg-gray-600 text-white',
-          border: 'border-gray-400',
+          card: 'bg-gray-400/20 border-gray-400/70 text-gray-900 backdrop-blur-md shadow-xs',
+          badge: 'bg-gray-600/80 text-white backdrop-blur-xs border border-gray-400/40',
+          border: 'border-gray-400/70',
         };
       case 'Rechazada':
         return {
-          card: 'bg-red-500/20 border-red-400/80 text-red-950 backdrop-blur-xs opacity-80',
-          badge: 'bg-red-600 text-white',
-          border: 'border-red-400',
+          card: 'bg-red-500/15 border-red-400/70 text-red-950 backdrop-blur-md shadow-xs opacity-80',
+          badge: 'bg-red-600/80 text-white backdrop-blur-xs border border-red-400/40',
+          border: 'border-red-400/70',
         };
       default:
         return {
           card: 'bg-[#FAF6F0] border-[#E6D7CB] text-[#2D2424]',
-          badge: 'bg-gray-600 text-white',
+          badge: 'bg-gray-600/80 text-white backdrop-blur-xs',
           border: 'border-stone-300',
         };
     }

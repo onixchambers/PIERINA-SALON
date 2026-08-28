@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSalon } from '@/context/SalonContext';
 import { Cita, EstadoCita } from '@/types/salon';
 import {
@@ -36,6 +36,7 @@ export default function AppointmentDetailModal({
   onClose,
 }: AppointmentDetailModalProps) {
   const {
+    citas,
     servicios,
     colaboradores,
     configuracion,
@@ -45,34 +46,43 @@ export default function AppointmentDetailModal({
 
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
   const [fotoModal, setFotoModal] = useState<string | null>(null);
+  const [estadoOptimista, setEstadoOptimista] = useState<EstadoCita | null>(null);
+
+  useEffect(() => {
+    setEstadoOptimista(null);
+  }, [cita?.id]);
 
   if (!isOpen || !cita) return null;
 
-  const colab = colaboradores.find((c) => c.id === (cita.colaboradorId || cita.terapeutaId));
-  const serviciosCita = cita.servicioIds
+  const citaActual = citas.find((c) => c.id === cita.id) || cita;
+  const estadoMostrado = estadoOptimista || citaActual.estado;
+
+  const colab = colaboradores.find((c) => c.id === (citaActual.colaboradorId || citaActual.terapeutaId));
+  const serviciosCita = citaActual.servicioIds
     .map((id) => servicios.find((s) => s.id === id))
     .filter(Boolean);
 
   const handleCambiarEstado = async (nuevo: EstadoCita) => {
-    await actualizarEstadoCita(cita.id, nuevo);
+    setEstadoOptimista(nuevo);
+    await actualizarEstadoCita(citaActual.id, nuevo);
   };
 
   const handleEliminar = async () => {
-    await eliminarCita(cita.id);
+    await eliminarCita(citaActual.id);
     setConfirmandoEliminar(false);
     onClose();
   };
 
   const handleEnviarWhatsApp = () => {
     let link = '';
-    if (cita.estado === 'Confirmada') {
-      link = getWhatsAppConfirmationLink(cita, servicios, colab, configuracion);
-    } else if (cita.estado === 'Rechazada') {
-      link = getWhatsAppRejectionLink(cita, servicios, colab, configuracion);
-    } else if (cita.estado === 'Completada') {
-      link = getWhatsAppCompletedLink(cita, servicios, colab, configuracion);
+    if (estadoMostrado === 'Confirmada') {
+      link = getWhatsAppConfirmationLink(citaActual, servicios, colab, configuracion);
+    } else if (estadoMostrado === 'Rechazada') {
+      link = getWhatsAppRejectionLink(citaActual, servicios, colab, configuracion);
+    } else if (estadoMostrado === 'Completada') {
+      link = getWhatsAppCompletedLink(citaActual, servicios, colab, configuracion);
     } else {
-      link = getWhatsAppPendingLink(cita, servicios, colab, configuracion);
+      link = getWhatsAppPendingLink(citaActual, servicios, colab, configuracion);
     }
     window.open(link, '_blank');
   };
@@ -88,20 +98,20 @@ export default function AppointmentDetailModal({
             </span>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-serif font-bold text-[#2D2424]">
-                {cita.codigo}
+                {citaActual.codigo}
               </h3>
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
-                  cita.estado === 'Confirmada'
-                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-950'
-                    : cita.estado === 'Pendiente'
-                    ? 'bg-orange-500/20 border-orange-400/60 text-orange-950 animate-soft-pulse'
-                    : cita.estado === 'Rechazada'
-                    ? 'bg-red-500/20 border-red-400/60 text-red-950'
-                    : 'bg-gray-400/25 border-gray-400/60 text-gray-900'
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border transition-all duration-150 ${
+                  estadoMostrado === 'Confirmada'
+                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-950 backdrop-blur-xs'
+                    : estadoMostrado === 'Pendiente'
+                    ? 'bg-orange-500/20 border-orange-400/60 text-orange-950 backdrop-blur-xs animate-soft-pulse'
+                    : estadoMostrado === 'Rechazada'
+                    ? 'bg-red-500/20 border-red-400/60 text-red-950 backdrop-blur-xs'
+                    : 'bg-gray-400/25 border-gray-400/60 text-gray-900 backdrop-blur-xs'
                 }`}
               >
-                {cita.estado}
+                {estadoMostrado}
               </span>
             </div>
           </div>
@@ -208,7 +218,7 @@ export default function AppointmentDetailModal({
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {(['Pendiente', 'Confirmada', 'Completada', 'Rechazada'] as EstadoCita[]).map((st) => {
-              const esActivo = cita.estado === st;
+              const esActivo = estadoMostrado === st;
               let estiloBoton = '';
 
               if (esActivo) {
@@ -217,13 +227,13 @@ export default function AppointmentDetailModal({
                     estiloBoton = 'bg-orange-500/25 text-orange-950 border-orange-500/80 shadow-sm ring-2 ring-orange-400/40 backdrop-blur-xs font-bold';
                     break;
                   case 'Confirmada':
-                    estiloBoton = 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-400/40';
+                    estiloBoton = 'bg-emerald-500/25 text-emerald-950 border-emerald-600/80 shadow-sm ring-2 ring-emerald-400/40 backdrop-blur-xs font-bold';
                     break;
                   case 'Completada':
-                    estiloBoton = 'bg-gray-600 text-white border-gray-700 shadow-sm ring-2 ring-gray-400/40';
+                    estiloBoton = 'bg-gray-400/30 text-gray-950 border-gray-500/80 shadow-sm ring-2 ring-gray-400/40 backdrop-blur-xs font-bold';
                     break;
                   case 'Rechazada':
-                    estiloBoton = 'bg-red-600 text-white border-red-700 shadow-sm ring-2 ring-red-400/40';
+                    estiloBoton = 'bg-red-500/25 text-red-950 border-red-500/80 shadow-sm ring-2 ring-red-400/40 backdrop-blur-xs font-bold';
                     break;
                 }
               } else {
@@ -232,13 +242,13 @@ export default function AppointmentDetailModal({
                     estiloBoton = 'border-orange-300/60 bg-white/80 text-orange-800 hover:bg-orange-50 hover:border-orange-400';
                     break;
                   case 'Confirmada':
-                    estiloBoton = 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50 hover:border-emerald-400';
+                    estiloBoton = 'border-emerald-300/60 bg-white/80 text-emerald-800 hover:bg-emerald-50 hover:border-emerald-400';
                     break;
                   case 'Completada':
-                    estiloBoton = 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400';
+                    estiloBoton = 'border-gray-300/60 bg-white/80 text-gray-700 hover:bg-gray-100 hover:border-gray-400';
                     break;
                   case 'Rechazada':
-                    estiloBoton = 'border-red-200 bg-white text-red-800 hover:bg-red-50 hover:border-red-400';
+                    estiloBoton = 'border-red-300/60 bg-white/80 text-red-800 hover:bg-red-50 hover:border-red-400';
                     break;
                 }
               }
