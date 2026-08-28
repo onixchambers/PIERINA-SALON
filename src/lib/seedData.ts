@@ -35,6 +35,7 @@ export const CONFIG_INICIAL: ConfiguracionSalon = {
   alertaSonoraActiva: true,
   moneda: '$',
   maxColaboradores: 50,
+  maxAdministradores: 10,
   zonaHoraria: 'America/Panama',
   especialidades: ESPECIALIDADES_INICIALES,
   firebaseConfig: {

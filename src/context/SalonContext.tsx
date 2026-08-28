@@ -254,6 +254,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
             pinSuperAdmin: conf.pinSuperAdmin || 'onix1974',
             administradores: conf.administradores || [],
             maxColaboradores: conf.maxColaboradores || 50,
+            maxAdministradores: conf.maxAdministradores || 10,
             zonaHoraria: conf.zonaHoraria || 'America/Panama',
             horarioApertura: horarioAperturaMigrado,
             horarioCierre: horarioCierreMigrado,

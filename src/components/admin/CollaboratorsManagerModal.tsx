@@ -247,11 +247,20 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     e.preventDefault();
     if (!nuevoAdminNombre.trim() || !nuevoAdminPin.trim()) return;
 
+    const maxAdminsPermitidos = configuracion.maxAdministradores || 10;
+    const totalAdminsActuales = configuracion.administradores?.length || 0;
+
+    if (totalAdminsActuales >= maxAdminsPermitidos) {
+      alert(`Has alcanzado el límite máximo de ${maxAdminsPermitidos} administradores permitidos para este salón. Para registrar más, el Superusuario puede aumentar la capacidad en Ajustes del Salón (hasta 50).`);
+      return;
+    }
+
+    const pass = nuevoAdminPin.trim();
     const nuevoAdmin = {
       id: `admin-${Date.now()}`,
       nombre: nuevoAdminNombre.trim(),
-      pin: nuevoAdminPin.trim(),
-      password: nuevoAdminPin.trim(),
+      pin: pass,
+      password: pass,
       activo: true,
       creadoEn: new Date().toISOString(),
     };
@@ -677,9 +686,14 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                     👑 Panel de Superusuario - Crear Roles de Administrador
                   </h4>
                 </div>
-                <span className="text-[10px] text-purple-700 font-semibold">
-                  Acceso Exclusivo Superusuario
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-purple-200/80 text-purple-900 font-bold px-2 py-0.5 rounded-md border border-purple-300">
+                    {configuracion.administradores?.length || 0} / {configuracion.maxAdministradores || 10} Permitidos
+                  </span>
+                  <span className="text-[10px] text-purple-700 font-semibold hidden sm:inline">
+                    Acceso Exclusivo Superusuario
+                  </span>
+                </div>
               </div>
 
               <form onSubmit={handleCrearAdmin} className="grid sm:grid-cols-3 gap-2">

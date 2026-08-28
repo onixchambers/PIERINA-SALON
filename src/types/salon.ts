@@ -123,6 +123,7 @@ export interface ConfiguracionSalon {
   alertaSonoraActiva: boolean;
   moneda: string;
   maxColaboradores?: number; // Límite máximo de colaboradoras (1 a 50) configurado por el superusuario
+  maxAdministradores?: number; // Límite máximo de administradores adicionales (1 a 50) configurado por el superusuario
   zonaHoraria?: string; // Huso horario del salón (por defecto "America/Panama")
   especialidades?: Especialidad[];
   firebaseConfig?: {

@@ -28,6 +28,7 @@ import {
   WifiOff,
   DollarSign,
   Users,
+  ShieldCheck,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
@@ -62,6 +63,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [direccion, setDireccion] = useState(configuracion.direccion);
   const [moneda, setMoneda] = useState(configuracion.moneda || '$');
   const [maxColaboradores, setMaxColaboradores] = useState(configuracion.maxColaboradores || 50);
+  const [maxAdministradores, setMaxAdministradores] = useState(configuracion.maxAdministradores || 10);
   const [horarioApertura, setHorarioApertura] = useState(configuracion.horarioApertura);
   const [horarioCierre, setHorarioCierre] = useState(configuracion.horarioCierre);
   const [intervaloMinutos, setIntervaloMinutos] = useState(configuracion.intervaloMinutos);
@@ -88,6 +90,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       setDireccion(configuracion.direccion);
       setMoneda(configuracion.moneda || '$');
       setMaxColaboradores(configuracion.maxColaboradores || 50);
+      setMaxAdministradores(configuracion.maxAdministradores || 10);
       setHorarioApertura(configuracion.horarioApertura);
       setHorarioCierre(configuracion.horarioCierre);
       setIntervaloMinutos(configuracion.intervaloMinutos);
@@ -142,6 +145,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       direccion: direccion.trim(),
       moneda: moneda.trim() || '$',
       maxColaboradores: esSuperAdmin ? (Number(maxColaboradores) || 50) : (configuracion.maxColaboradores || 50),
+      maxAdministradores: esSuperAdmin ? (Number(maxAdministradores) || 10) : (configuracion.maxAdministradores || 10),
       horarioApertura,
       horarioCierre,
       intervaloMinutos: Number(intervaloMinutos),
@@ -567,6 +571,66 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
               <div className="rounded-lg bg-white/80 p-2 border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between">
                 <span>Registradas actualmente: <strong>{colaboradores.length}</strong></span>
                 <span>Capacidad disponible: <strong>{Math.max(0, maxColaboradores - colaboradores.length)}</strong> lugares libres</span>
+              </div>
+            </div>
+          )}
+
+          {/* LÍMITE MÁXIMO DE ADMINISTRADORES (EXCLUSIVO SUPERUSUARIO: 1 A 50) */}
+          {esSuperAdmin && (
+            <div className="rounded-2xl border border-purple-300 bg-purple-50/60 p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-purple-800" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-purple-950">
+                    Límite Máximo de Administradores (1 a 50)
+                  </h4>
+                </div>
+                <span className="rounded-md bg-purple-200/80 border border-purple-300 px-2 py-0.5 text-[10px] font-bold text-purple-900">
+                  👑 Superusuario
+                </span>
+              </div>
+
+              <p className="text-xs text-purple-900/80">
+                Como <strong>Superusuario</strong>, puedes definir la cantidad máxima de administradores o recepcionistas con permisos de gestión (entre 1 y 50).
+              </p>
+
+              <div className="flex items-center gap-4 pt-1">
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="range"
+                    min={1}
+                    max={50}
+                    value={maxAdministradores}
+                    onChange={(e) => setMaxAdministradores(Number(e.target.value))}
+                    className="w-full accent-purple-700 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-purple-900/70 font-semibold px-0.5">
+                    <span>1</span>
+                    <span>10</span>
+                    <span>25</span>
+                    <span>50 administradores</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-xl border border-purple-300 bg-white px-3 py-1.5 shrink-0 shadow-2xs">
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={maxAdministradores}
+                    onChange={(e) => {
+                      const val = Math.min(50, Math.max(1, Number(e.target.value) || 1));
+                      setMaxAdministradores(val);
+                    }}
+                    className="w-10 text-center text-xs font-bold text-[#2D2424] focus:outline-hidden"
+                  />
+                  <span className="text-[11px] font-bold text-purple-900">Máx.</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-white/80 p-2 border border-purple-200 text-[11px] text-purple-900 flex items-center justify-between">
+                <span>Administradores creados: <strong>{configuracion.administradores?.length || 0}</strong></span>
+                <span>Cupos disponibles: <strong>{Math.max(0, maxAdministradores - (configuracion.administradores?.length || 0))}</strong> libres</span>
               </div>
             </div>
           )}
