@@ -25,6 +25,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
+import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
 
 interface SalonSettingsModalProps {
   isOpen: boolean;
@@ -308,12 +309,10 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
                 <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
                   Teléfono / WhatsApp Recepción:
                 </label>
-                <input
-                  type="text"
+                <PhoneInputWithCountry
                   required
                   value={telefonoSalon}
-                  onChange={(e) => setTelefonoSalon(e.target.value)}
-                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
+                  onChange={(val) => setTelefonoSalon(val)}
                 />
               </div>
             </div>

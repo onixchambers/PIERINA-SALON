@@ -28,6 +28,7 @@ import {
   EyeOff,
   AlertTriangle,
 } from 'lucide-react';
+import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
 
 const DIAS_SEMANA_OPCIONES = [
   { id: 1, label: 'Lun' },
@@ -386,13 +387,10 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                 <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
                   Teléfono / WhatsApp:
                 </label>
-                <input
-                  type="text"
+                <PhoneInputWithCountry
                   required
-                  placeholder="Ej. +52 55 1234 5678"
                   value={formTelefono}
-                  onChange={(e) => setFormTelefono(e.target.value)}
-                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
+                  onChange={(val) => setFormTelefono(val)}
                 />
               </div>
             </div>

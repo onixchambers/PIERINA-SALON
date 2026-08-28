@@ -33,6 +33,7 @@ import {
   Trash2,
   ImageIcon,
 } from 'lucide-react';
+import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
 import { soundService } from '@/lib/sound';
 import { processImageFile } from '@/lib/imageHelper';
 
@@ -788,12 +789,9 @@ export default function AdminPage() {
                   <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
                     Teléfono / WhatsApp:
                   </label>
-                  <input
-                    type="tel"
-                    placeholder="55 1234 5678"
+                  <PhoneInputWithCountry
                     value={manualTelefono}
-                    onChange={(e) => setManualTelefono(e.target.value)}
-                    className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
+                    onChange={(val) => setManualTelefono(val)}
                   />
                 </div>
               </div>

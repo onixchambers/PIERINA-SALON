@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import Link from 'next/link';
+import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
 
 export default function BookingWizard() {
   const {
@@ -811,20 +812,19 @@ export default function BookingWizard() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#3D322E] uppercase tracking-wider mb-1.5">
-                    Teléfono / WhatsApp <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[#3D322E] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>
+                      Teléfono / WhatsApp <span className="text-rose-500">*</span>
+                    </span>
+                    <span className="text-[10px] text-[#8C7A70] font-normal lowercase">
+                      (detecta tu país automáticamente)
+                    </span>
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-3 h-4 w-4 text-[#8C7A70]" />
-                    <input
-                      type="tel"
-                      required
-                      placeholder="Ej. 55 1234 5678"
-                      value={clienteTelefono}
-                      onChange={(e) => setClienteTelefono(e.target.value)}
-                      className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0]/50 py-2.5 pl-10 pr-4 text-sm text-[#2D2424] placeholder-[#9A8B84] focus:border-[#B85D75] focus:bg-white focus:outline-hidden"
-                    />
-                  </div>
+                  <PhoneInputWithCountry
+                    required
+                    value={clienteTelefono}
+                    onChange={(val) => setClienteTelefono(val)}
+                  />
                 </div>
 
                 <div>
