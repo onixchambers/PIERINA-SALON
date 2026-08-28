@@ -214,7 +214,7 @@ export default function AppointmentDetailModal({
               if (esActivo) {
                 switch (st) {
                   case 'Pendiente':
-                    estiloBoton = 'bg-orange-500 text-white border-orange-600 shadow-sm ring-2 ring-orange-400/40';
+                    estiloBoton = 'bg-orange-500/25 text-orange-950 border-orange-500/80 shadow-sm ring-2 ring-orange-400/40 backdrop-blur-xs font-bold';
                     break;
                   case 'Confirmada':
                     estiloBoton = 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-400/40';
@@ -229,7 +229,7 @@ export default function AppointmentDetailModal({
               } else {
                 switch (st) {
                   case 'Pendiente':
-                    estiloBoton = 'border-orange-200 bg-white text-orange-800 hover:bg-orange-50 hover:border-orange-400';
+                    estiloBoton = 'border-orange-300/60 bg-white/80 text-orange-800 hover:bg-orange-50 hover:border-orange-400';
                     break;
                   case 'Confirmada':
                     estiloBoton = 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50 hover:border-emerald-400';

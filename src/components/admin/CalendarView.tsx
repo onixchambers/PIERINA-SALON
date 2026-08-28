@@ -71,9 +71,9 @@ export default function CalendarView({
     switch (estado) {
       case 'Pendiente':
         return {
-          card: 'bg-orange-500/20 border-orange-400/80 text-orange-950 backdrop-blur-xs',
-          badge: 'bg-orange-500 text-white',
-          border: 'border-orange-400',
+          card: 'bg-orange-500/15 border-orange-400/70 text-orange-950 backdrop-blur-md shadow-xs',
+          badge: 'bg-orange-500/80 text-white backdrop-blur-xs border border-orange-400/40',
+          border: 'border-orange-400/70',
         };
       case 'Confirmada':
         return {
