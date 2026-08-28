@@ -66,37 +66,37 @@ export default function CalendarView({
     nuevoColaboradorId: string;
   } | null>(null);
 
-  // Paleta de colores traslúcidos según el estado de la cita
+  // Paleta de colores según el estado de la cita
   const getEstadoEstilo = (estado: string) => {
     switch (estado) {
       case 'Pendiente':
         return {
-          card: 'bg-amber-400/20 border-amber-400/70 text-amber-950 backdrop-blur-xs',
-          badge: 'bg-amber-500/90 text-white',
-          border: 'border-amber-400',
+          card: 'bg-orange-500/20 border-orange-400/80 text-orange-950 backdrop-blur-xs',
+          badge: 'bg-orange-500 text-white',
+          border: 'border-orange-400',
         };
       case 'Confirmada':
         return {
-          card: 'bg-emerald-500/20 border-emerald-500/70 text-emerald-950 backdrop-blur-xs',
-          badge: 'bg-emerald-600/90 text-white',
+          card: 'bg-emerald-500/20 border-emerald-500/80 text-emerald-950 backdrop-blur-xs',
+          badge: 'bg-emerald-600 text-white',
           border: 'border-emerald-500',
-        };
-      case 'Rechazada':
-        return {
-          card: 'bg-rose-500/20 border-rose-400/70 text-rose-950 backdrop-blur-xs opacity-75',
-          badge: 'bg-rose-600/90 text-white',
-          border: 'border-rose-400',
         };
       case 'Completada':
         return {
-          card: 'bg-stone-400/25 border-stone-400/70 text-stone-900 backdrop-blur-xs',
-          badge: 'bg-stone-600/90 text-white',
-          border: 'border-stone-400',
+          card: 'bg-gray-400/20 border-gray-400/80 text-gray-900 backdrop-blur-xs',
+          badge: 'bg-gray-600 text-white',
+          border: 'border-gray-400',
+        };
+      case 'Rechazada':
+        return {
+          card: 'bg-red-500/20 border-red-400/80 text-red-950 backdrop-blur-xs opacity-80',
+          badge: 'bg-red-600 text-white',
+          border: 'border-red-400',
         };
       default:
         return {
           card: 'bg-[#FAF6F0] border-[#E6D7CB] text-[#2D2424]',
-          badge: 'bg-stone-600 text-white',
+          badge: 'bg-gray-600 text-white',
           border: 'border-stone-300',
         };
     }

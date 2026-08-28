@@ -156,8 +156,8 @@ export default function AppointmentTracker({ citaId }: AppointmentTrackerProps) 
 
           <div>
             {cita.estado === 'Pendiente' && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 border border-amber-300 animate-soft-pulse">
-                <Clock className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800 border border-orange-300 animate-soft-pulse">
+                <Clock className="h-3.5 w-3.5 text-orange-600" />
                 Pendiente de Aprobación
               </span>
             )}
@@ -168,14 +168,14 @@ export default function AppointmentTracker({ citaId }: AppointmentTrackerProps) 
               </span>
             )}
             {cita.estado === 'Rechazada' && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800 border border-rose-300">
-                <AlertCircle className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800 border border-red-300">
+                <AlertCircle className="h-3.5 w-3.5 text-red-600" />
                 Cancelada / No disponible
               </span>
             )}
             {cita.estado === 'Completada' && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-800 border border-stone-300">
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-800 border border-gray-300">
+                <Sparkles className="h-3.5 w-3.5 text-gray-600" />
                 Servicio Completado
               </span>
             )}

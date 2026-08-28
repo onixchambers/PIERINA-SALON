@@ -112,12 +112,14 @@ export default function LookupAppointmentModal({ isOpen, onClose }: LookupAppoin
                     {cita.codigo}
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
                       cita.estado === 'Confirmada'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                         : cita.estado === 'Pendiente'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-rose-100 text-rose-800'
+                        ? 'bg-orange-100 text-orange-800 border-orange-300'
+                        : cita.estado === 'Completada'
+                        ? 'bg-gray-100 text-gray-800 border-gray-300'
+                        : 'bg-red-100 text-red-800 border-red-300'
                     }`}
                   >
                     {cita.estado}

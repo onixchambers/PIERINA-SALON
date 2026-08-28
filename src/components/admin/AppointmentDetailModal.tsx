@@ -95,10 +95,10 @@ export default function AppointmentDetailModal({
                   cita.estado === 'Confirmada'
                     ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-950'
                     : cita.estado === 'Pendiente'
-                    ? 'bg-amber-400/20 border-amber-400/60 text-amber-950 animate-soft-pulse'
+                    ? 'bg-orange-500/20 border-orange-400/60 text-orange-950 animate-soft-pulse'
                     : cita.estado === 'Rechazada'
-                    ? 'bg-rose-500/20 border-rose-400/60 text-rose-950'
-                    : 'bg-stone-400/25 border-stone-400/60 text-stone-900'
+                    ? 'bg-red-500/20 border-red-400/60 text-red-950'
+                    : 'bg-gray-400/25 border-gray-400/60 text-gray-900'
                 }`}
               >
                 {cita.estado}
@@ -209,21 +209,45 @@ export default function AppointmentDetailModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {(['Pendiente', 'Confirmada', 'Completada', 'Rechazada'] as EstadoCita[]).map((st) => {
               const esActivo = cita.estado === st;
-              const estiloBoton = esActivo
-                ? st === 'Confirmada'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : st === 'Pendiente'
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                  : st === 'Rechazada'
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-stone-600 text-white border-stone-600 shadow-xs'
-                : 'border-[#E6D7CB] bg-white text-[#5A4D48] hover:bg-[#F4EDE4]';
+              let estiloBoton = '';
+
+              if (esActivo) {
+                switch (st) {
+                  case 'Pendiente':
+                    estiloBoton = 'bg-orange-500 text-white border-orange-600 shadow-sm ring-2 ring-orange-400/40';
+                    break;
+                  case 'Confirmada':
+                    estiloBoton = 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-400/40';
+                    break;
+                  case 'Completada':
+                    estiloBoton = 'bg-gray-600 text-white border-gray-700 shadow-sm ring-2 ring-gray-400/40';
+                    break;
+                  case 'Rechazada':
+                    estiloBoton = 'bg-red-600 text-white border-red-700 shadow-sm ring-2 ring-red-400/40';
+                    break;
+                }
+              } else {
+                switch (st) {
+                  case 'Pendiente':
+                    estiloBoton = 'border-orange-200 bg-white text-orange-800 hover:bg-orange-50 hover:border-orange-400';
+                    break;
+                  case 'Confirmada':
+                    estiloBoton = 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50 hover:border-emerald-400';
+                    break;
+                  case 'Completada':
+                    estiloBoton = 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400';
+                    break;
+                  case 'Rechazada':
+                    estiloBoton = 'border-red-200 bg-white text-red-800 hover:bg-red-50 hover:border-red-400';
+                    break;
+                }
+              }
 
               return (
                 <button
                   key={st}
                   onClick={() => handleCambiarEstado(st)}
-                  className={`rounded-xl py-2 text-xs font-bold transition border ${estiloBoton}`}
+                  className={`rounded-xl py-2.5 px-2 text-xs font-bold transition-all border cursor-pointer ${estiloBoton}`}
                 >
                   {st}
                 </button>
