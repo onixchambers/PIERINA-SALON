@@ -335,9 +335,12 @@ export default function AdminPage() {
                 Acceso con Contraseña Personal
               </span>
               <h2 className="mt-1 text-2xl font-serif font-bold text-[#2D2424]">
-                Portal Pierina Salón
+                {configuracion.nombreSalon || 'Pierina Salón'}
               </h2>
-              <p className="mt-1 text-xs text-[#7A6B65]">
+              <p className="text-xs font-medium text-[#8C7A70]">
+                {configuracion.eslogan || 'Cejas, pestañas y más'}
+              </p>
+              <p className="mt-1.5 text-[11px] text-[#A89890]">
                 Ingresa tu clave de acceso. El sistema detectará automáticamente tu usuario y cargará tu agenda.
               </p>
             </div>

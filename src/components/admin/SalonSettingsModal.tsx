@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSalon } from '@/context/SalonContext';
 import { Especialidad } from '@/types/salon';
 import { processImageFile } from '@/lib/imageHelper';
@@ -19,6 +19,10 @@ import {
   Plus,
   Tag,
   MapPin,
+  KeyRound,
+  Shield,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 
@@ -43,7 +47,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const esSuperAdmin = usuarioSesion?.tipo === 'superadmin' || !!usuarioSesion?.esSuperAdmin;
 
   const [nombreSalon, setNombreSalon] = useState(configuracion.nombreSalon);
-  const [eslogan, setEslogan] = useState(configuracion.eslogan);
+  const [eslogan, setEslogan] = useState(configuracion.eslogan || '');
   const [logoUrl, setLogoUrl] = useState<string | null>(configuracion.logoUrl || null);
   const [telefonoSalon, setTelefonoSalon] = useState(configuracion.telefonoSalon);
   const [direccion, setDireccion] = useState(configuracion.direccion);
@@ -62,6 +66,24 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [fbAppId, setFbAppId] = useState(configuracion.firebaseConfig?.appId || '');
 
   const [guardadoExito, setGuardadoExito] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setNombreSalon(configuracion.nombreSalon);
+      setEslogan(configuracion.eslogan || '');
+      setLogoUrl(configuracion.logoUrl || null);
+      setTelefonoSalon(configuracion.telefonoSalon);
+      setDireccion(configuracion.direccion);
+      setHorarioApertura(configuracion.horarioApertura);
+      setHorarioCierre(configuracion.horarioCierre);
+      setIntervaloMinutos(configuracion.intervaloMinutos);
+      setAlertaSonora(configuracion.alertaSonoraActiva);
+      setZonaHoraria(configuracion.zonaHoraria || 'America/Panama');
+      setFbApiKey(configuracion.firebaseConfig?.apiKey || '');
+      setFbProjectId(configuracion.firebaseConfig?.projectId || '');
+      setFbAppId(configuracion.firebaseConfig?.appId || '');
+    }
+  }, [isOpen, configuracion]);
 
   if (!isOpen) return null;
 
@@ -297,14 +319,16 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
-                Eslogan / Subtítulo:
+              <label className="block text-xs font-semibold text-[#5A4D48] mb-1 flex items-center justify-between">
+                <span>Eslogan / Subtítulo:</span>
+                <span className="text-[10px] text-[#B85D75] font-normal">Aparece bajo el nombre "Pierina Salón" en toda la app</span>
               </label>
               <input
                 type="text"
                 value={eslogan}
                 onChange={(e) => setEslogan(e.target.value)}
-                className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
+                placeholder="Ej: Cejas, pestañas y más"
+                className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden font-medium"
               />
             </div>
 
