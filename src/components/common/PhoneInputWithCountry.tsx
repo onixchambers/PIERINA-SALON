@@ -19,7 +19,7 @@ interface PhoneInputWithCountryProps {
   id?: string;
 }
 
-function FlagIcon({
+export function FlagIcon({
   codigo,
   bandera,
   className = 'h-3.5 w-5 rounded-xs object-cover shadow-2xs inline-block shrink-0',

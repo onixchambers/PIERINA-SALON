@@ -244,12 +244,16 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
           const pinAdminMigrado = conf.pinAdmin && conf.pinAdmin !== '1234' ? conf.pinAdmin : 'pierina123';
           const horarioAperturaMigrado = conf.horarioApertura === '09:00' || !conf.horarioApertura ? '08:00' : conf.horarioApertura;
           const horarioCierreMigrado = conf.horarioCierre === '20:00' || !conf.horarioCierre ? '23:00' : conf.horarioCierre;
+          const telefonoMigrado = !conf.telefonoSalon || conf.telefonoSalon === '+525541238990' ? CONFIG_INICIAL.telefonoSalon : conf.telefonoSalon;
+          const direccionMigrada = !conf.direccion || conf.direccion.includes('CDMX') || conf.direccion.includes('Palmas') ? CONFIG_INICIAL.direccion : conf.direccion;
           const mergedConfig: ConfiguracionSalon = {
             ...CONFIG_INICIAL,
             ...conf,
             nombreSalon: 'Pierina Salón',
             eslogan: conf.eslogan && !conf.eslogan.includes('consciente') ? conf.eslogan : 'Cejas, pestañas y más',
             logoUrl: conf.logoUrl || '/logo-pierina.png',
+            telefonoSalon: telefonoMigrado,
+            direccion: direccionMigrada,
             pinAdmin: pinAdminMigrado,
             pinSuperAdmin: conf.pinSuperAdmin || 'onix1974',
             administradores: conf.administradores || [],

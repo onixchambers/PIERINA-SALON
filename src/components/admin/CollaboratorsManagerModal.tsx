@@ -28,7 +28,8 @@ import {
   EyeOff,
   AlertTriangle,
 } from 'lucide-react';
-import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
+import PhoneInputWithCountry, { FlagIcon } from '@/components/common/PhoneInputWithCountry';
+import { separarTelefonoYPais } from '@/lib/countryDetection';
 
 const DIAS_SEMANA_OPCIONES = [
   { id: 1, label: 'Lun' },
@@ -816,7 +817,12 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-emerald-700 flex items-center gap-1 mt-0.5">
+                      <div className="text-[11px] text-emerald-700 flex items-center gap-1.5 mt-0.5">
+                        <FlagIcon
+                          codigo={separarTelefonoYPais(c.telefono).pais.codigo}
+                          bandera={separarTelefonoYPais(c.telefono).pais.bandera}
+                          className="h-2.5 w-3.5 rounded-xs object-cover"
+                        />
                         <Phone className="h-3 w-3" />
                         <span>{c.telefono}</span>
                       </div>

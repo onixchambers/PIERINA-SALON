@@ -23,6 +23,8 @@ import {
   getWhatsAppPendingLink,
   formatWhatsAppNumber,
 } from '@/lib/whatsapp';
+import { FlagIcon } from '@/components/common/PhoneInputWithCountry';
+import { separarTelefonoYPais } from '@/lib/countryDetection';
 
 interface AppointmentDetailModalProps {
   cita: Cita | null;
@@ -137,8 +139,13 @@ export default function AppointmentDetailModal({
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
             >
-              <Phone className="h-3.5 w-3.5" />
-              {cita.clienteTelefono}
+              <FlagIcon
+                codigo={separarTelefonoYPais(cita.clienteTelefono).pais.codigo}
+                bandera={separarTelefonoYPais(cita.clienteTelefono).pais.bandera}
+                className="h-3 w-4.5 rounded-xs object-cover"
+              />
+              <Phone className="h-3 w-3" />
+              <span>{cita.clienteTelefono}</span>
             </a>
           </div>
 

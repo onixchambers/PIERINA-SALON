@@ -16,6 +16,8 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { getWhatsAppConfirmationLink, getWhatsAppRejectionLink, formatWhatsAppNumber } from '@/lib/whatsapp';
+import { FlagIcon } from '@/components/common/PhoneInputWithCountry';
+import { separarTelefonoYPais } from '@/lib/countryDetection';
 
 interface PendingRequestsModalProps {
   isOpen: boolean;
@@ -112,10 +114,15 @@ export default function PendingRequestsModal({ isOpen, onClose }: PendingRequest
                       href={`https://wa.me/${formatWhatsAppNumber(cita.clienteTelefono)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
+                      className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline"
                     >
+                      <FlagIcon
+                        codigo={separarTelefonoYPais(cita.clienteTelefono).pais.codigo}
+                        bandera={separarTelefonoYPais(cita.clienteTelefono).pais.bandera}
+                        className="h-3 w-4.5 rounded-xs object-cover"
+                      />
                       <Phone className="h-3 w-3" />
-                      {cita.clienteTelefono}
+                      <span>{cita.clienteTelefono}</span>
                     </a>
                   </div>
 
