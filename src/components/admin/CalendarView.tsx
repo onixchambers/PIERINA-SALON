@@ -840,25 +840,35 @@ export default function CalendarView({
                             b.terapeutaId === 'all')
                       )
                       .map((b) => (
-                        <div
-                          key={b.id}
-                          className="rounded-lg bg-stone-950/85 backdrop-blur-xs p-1.5 text-[9px] border border-stone-700 text-white shadow-2xs flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-1 min-w-0">
-                            <ShieldBan className="h-3 w-3 text-rose-400 shrink-0" />
-                            <span className="font-bold truncate">{b.motivo}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDesbloquearTodoElDia(d.fecha);
-                            }}
-                            className="bg-stone-800 hover:bg-rose-600 text-stone-200 hover:text-white px-1 py-0.5 rounded text-[8px] border border-stone-600 transition shrink-0 ml-1 cursor-pointer"
-                            title="Desbloquear este día"
+                        <div key={b.id}>
+                          {/* 📱 Celular Vertical: Icono compacto de bloqueo */}
+                          <div
+                            className="sm:hidden flex items-center justify-center rounded-lg bg-stone-950/90 py-1 px-0.5 text-white"
+                            title={`⛔ Bloqueado: ${b.motivo}`}
                           >
-                            Desbloquear
-                          </button>
+                            <ShieldBan className="h-3.5 w-3.5 text-rose-400" />
+                          </div>
+
+                          {/* 💻 Desktop: Ficha completa de bloqueo */}
+                          <div
+                            className="hidden sm:flex rounded-lg bg-stone-950/85 backdrop-blur-xs p-1.5 text-[9px] border border-stone-700 text-white shadow-2xs items-center justify-between"
+                          >
+                            <div className="flex items-center gap-1 min-w-0">
+                              <ShieldBan className="h-3 w-3 text-rose-400 shrink-0" />
+                              <span className="font-bold truncate">{b.motivo}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDesbloquearTodoElDia(d.fecha);
+                              }}
+                              className="bg-stone-800 hover:bg-rose-600 text-stone-200 hover:text-white px-1 py-0.5 rounded text-[8px] border border-stone-600 transition shrink-0 ml-1 cursor-pointer"
+                              title="Desbloquear este día"
+                            >
+                              Desbloquear
+                            </button>
+                          </div>
                         </div>
                       ))}
 
@@ -884,7 +894,7 @@ export default function CalendarView({
 
                       return (
                         <React.Fragment key={cita.id}>
-                          {/* 📱 VISTA EN CELULARES: Circulito pequeño con inicial y color de estado */}
+                          {/* 📱 VISTA EN CELULAR VERTICAL: Circulito pequeño con inicial y color de estado */}
                           <div
                             onClick={(e) => {
                               e.stopPropagation();
@@ -894,11 +904,11 @@ export default function CalendarView({
                             title={`${cita.clienteNombre} (${cita.estado}) • ${cita.horaInicio}`}
                           >
                             <div
-                              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${colorCirculo}`}
+                              className={`h-6.5 w-6.5 min-w-[26px] rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${colorCirculo}`}
                             >
                               {inicial}
                             </div>
-                            <span className="text-[8px] font-bold text-[#5A4D48] mt-0.5 leading-none">
+                            <span className="text-[7.5px] font-bold text-[#5A4D48] mt-0.5 leading-none">
                               {cita.horaInicio}
                             </span>
                           </div>
@@ -936,8 +946,9 @@ export default function CalendarView({
 
                     {citasSemanaDia.length === 0 &&
                       bloqueos.filter((b) => b.fecha === d.fecha).length === 0 && (
-                        <div className="pt-8 text-center text-[10px] text-[#A89A92]">
-                          Sin citas
+                        <div className="pt-4 sm:pt-8 text-center text-[8px] sm:text-[10px] text-[#A89A92]">
+                          <span className="sm:hidden">·</span>
+                          <span className="hidden sm:inline">Sin citas</span>
                         </div>
                       )}
                   </div>
