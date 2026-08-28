@@ -460,7 +460,15 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(items));
     });
 
-    unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq];
+    const unsubConfig = onSnapshot(doc(db, 'configuracion', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const confData = docSnap.data() as ConfiguracionSalon;
+        setConfiguracion((prev) => ({ ...prev, ...confData }));
+        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(confData));
+      }
+    });
+
+    unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq, unsubConfig];
   };
 
   // Autenticación inteligente sin usuario
@@ -497,8 +505,19 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
     if (configuracion.administradores && configuracion.administradores.length > 0) {
       const adminAdicional = configuracion.administradores.find((a) => {
-        const passMin = (a.password || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return passMin === pinMin;
+        const pinAdminMin = ((a as any).pin || (a as any).password || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const passMin = ((a as any).password || (a as any).pin || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        return (pinAdminMin === pinMin || passMin === pinMin) && (a.activo !== false);
       });
 
       if (adminAdicional) {
@@ -562,10 +581,20 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   // Guardar Administrador Adicional
   const guardarAdministrador = async (admin: AdministradorAdicional) => {
     const listadoActual = configuracion.administradores || [];
-    const existe = listadoActual.some((a) => a.id === admin.id);
+    const pinLimpio = (admin.pin || (admin as any).password || '').toString().trim();
+    const sanitizedAdmin: AdministradorAdicional = {
+      id: admin.id || `admin-${Date.now()}`,
+      nombre: admin.nombre.trim(),
+      pin: pinLimpio,
+      password: pinLimpio,
+      activo: admin.activo !== false,
+      creadoEn: admin.creadoEn || new Date().toISOString(),
+    };
+
+    const existe = listadoActual.some((a) => a.id === sanitizedAdmin.id);
     const updated = existe
-      ? listadoActual.map((a) => (a.id === admin.id ? admin : a))
-      : [...listadoActual, admin];
+      ? listadoActual.map((a) => (a.id === sanitizedAdmin.id ? sanitizedAdmin : a))
+      : [...listadoActual, sanitizedAdmin];
 
     await actualizarConfiguracion({ administradores: updated });
   };
@@ -960,6 +989,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     const updated: ConfiguracionSalon = { ...configuracion, ...nuevaConfig };
     setConfiguracion(updated);
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(updated));
+    await persistirAccion('set', 'configuracion', 'general', updated);
 
     if (nuevaConfig.firebaseConfig) {
       const { db } = initFirebase(nuevaConfig.firebaseConfig);

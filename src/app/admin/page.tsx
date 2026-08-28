@@ -244,6 +244,14 @@ export default function AdminPage() {
     // 5. Guardar Cambio
     if (esColaboradora && miColaboradorId) {
       await cambiarPinColaborador(miColaboradorId, nuevo);
+    } else if (usuarioSesion?.tipo === 'superadmin' || usuarioSesion?.esSuperAdmin) {
+      await actualizarConfiguracion({ pinSuperAdmin: nuevo.trim() });
+    } else if (usuarioSesion?.adminId) {
+      const adminId = usuarioSesion.adminId;
+      const admins = (configuracion.administradores || []).map((a) =>
+        a.id === adminId ? { ...a, pin: nuevo.trim(), password: nuevo.trim() } : a
+      );
+      await actualizarConfiguracion({ administradores: admins });
     } else {
       await cambiarPinAdmin(nuevo);
     }

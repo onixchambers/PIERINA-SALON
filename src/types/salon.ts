@@ -55,6 +55,7 @@ export interface AdministradorAdicional {
   id: string;
   nombre: string;
   pin: string;
+  password?: string;
   activo: boolean;
   creadoEn: string;
 }

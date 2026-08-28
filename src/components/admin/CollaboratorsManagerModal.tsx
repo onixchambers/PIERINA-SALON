@@ -83,6 +83,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
   // Formulario Superadmin para nuevo Administrador
   const [nuevoAdminNombre, setNuevoAdminNombre] = useState('');
   const [nuevoAdminPin, setNuevoAdminPin] = useState('');
+  const [mostrarAdminPassId, setMostrarAdminPassId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -711,25 +712,39 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                   <span className="text-[11px] font-bold text-purple-900 block">
                     Administradores Creados:
                   </span>
-                  {configuracion.administradores.map((admin) => (
-                    <div
-                      key={admin.id}
-                      className="flex items-center justify-between rounded-xl bg-white p-2 border border-purple-200 text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-purple-700" />
-                        <span className="font-bold text-[#2D2424]">{admin.nombre}</span>
-                        <span className="text-[10px] text-[#8C7A70] font-mono">••••••••</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => eliminarAdministrador(admin.id)}
-                        className="text-xs text-rose-600 hover:underline"
+                  {configuracion.administradores.map((admin) => {
+                    const passActual = (admin.pin || (admin as any).password || '').toString();
+                    const visible = mostrarAdminPassId === admin.id;
+                    return (
+                      <div
+                        key={admin.id}
+                        className="flex items-center justify-between rounded-xl bg-white p-2.5 border border-purple-200 text-xs shadow-2xs gap-2"
                       >
-                        Eliminar rol
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <ShieldCheck className="h-4 w-4 text-purple-700 shrink-0" />
+                          <span className="font-bold text-[#2D2424]">{admin.nombre}</span>
+                          <span className="text-[11px] text-purple-950 font-mono bg-purple-100/70 px-2 py-0.5 rounded-md border border-purple-200">
+                            {visible ? passActual : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setMostrarAdminPassId(visible ? null : admin.id)}
+                            className="text-purple-600 hover:text-purple-900 p-1 rounded hover:bg-purple-100/50 transition cursor-pointer"
+                            title={visible ? 'Ocultar contraseña' : 'Ver contraseña'}
+                          >
+                            {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => eliminarAdministrador(admin.id)}
+                          className="text-xs text-rose-600 hover:text-rose-800 hover:underline font-medium shrink-0 cursor-pointer"
+                        >
+                          Eliminar rol
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -738,7 +753,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
           {/* Lista de Colaboradoras Actuales */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#8C7A70]">
-              Colaboradoras Registradas ({colaboradores.length} de 10)
+              Colaboradoras Registradas ({colaboradores.length} de {maxColaboradoresPermitidas})
             </h4>
 
             <div className="space-y-2">
