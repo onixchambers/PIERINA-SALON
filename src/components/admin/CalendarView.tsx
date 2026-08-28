@@ -864,8 +864,24 @@ export default function CalendarView({
 
                     {/* Citas de la Semana */}
                     {citasSemanaDia.map((cita) => {
-                      const colab = colaboradores.find((c) => c.id === cita.terapeutaId);
+                      const colab = colaboradores.find(
+                        (c) => c.id === cita.terapeutaId || c.id === cita.colaboradorId
+                      );
                       const estilo = getEstadoEstilo(cita.estado);
+                      const inicial = (cita.clienteNombre || 'C').trim().charAt(0).toUpperCase();
+
+                      // Color vibrante del circulito según estado de la cita
+                      const colorCirculo =
+                        cita.estado === 'Confirmada'
+                          ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/40 shadow-xs'
+                          : cita.estado === 'Pendiente'
+                          ? 'bg-amber-500 text-white ring-2 ring-amber-400/40 shadow-xs'
+                          : cita.estado === 'Completada'
+                          ? 'bg-stone-500 text-white ring-2 ring-stone-400/40 shadow-xs'
+                          : cita.estado === 'Rechazada'
+                          ? 'bg-rose-600 text-white ring-2 ring-rose-400/40 shadow-xs'
+                          : 'bg-[#B85D75] text-white';
+
                       return (
                         <div
                           key={cita.id}
@@ -873,11 +889,26 @@ export default function CalendarView({
                             e.stopPropagation();
                             onSelectCita(cita);
                           }}
-                          className={`rounded-lg p-1.5 text-[10px] border shadow-2xs cursor-pointer ${estilo.card}`}
+                          className={`rounded-xl p-2 text-[10px] border shadow-2xs cursor-pointer transition hover:scale-[1.02] hover:shadow-xs ${estilo.card}`}
+                          title={`${cita.clienteNombre} (${cita.estado}) - ${cita.horaInicio} con ${colab?.nombre || 'Colaboradora'}`}
                         >
-                          <div className="font-bold truncate">{cita.clienteNombre}</div>
-                          <div className="opacity-80">
-                            {cita.horaInicio} • {colab?.nombre.split(' ')[0]}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {/* Circulito pequeño con la inicial del cliente y el color del estado */}
+                            <div
+                              className={`h-5 w-5 min-w-[20px] rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${colorCirculo}`}
+                            >
+                              {inicial}
+                            </div>
+                            <div className="font-bold text-[11px] truncate flex-1 leading-tight text-[#2D2424]">
+                              {cita.clienteNombre}
+                            </div>
+                          </div>
+
+                          <div className="mt-1 flex items-center justify-between text-[10px] opacity-85 pl-6.5">
+                            <span className="font-medium text-[#4A3E39]">{cita.horaInicio}</span>
+                            <span className="truncate text-[9px] font-semibold text-[#8C7A70]">
+                              {colab?.nombre.split(' ')[0]}
+                            </span>
                           </div>
                         </div>
                       );
