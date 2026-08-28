@@ -27,6 +27,7 @@ import {
   Wifi,
   WifiOff,
   DollarSign,
+  Users,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
@@ -60,6 +61,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [telefonoSalon, setTelefonoSalon] = useState(configuracion.telefonoSalon);
   const [direccion, setDireccion] = useState(configuracion.direccion);
   const [moneda, setMoneda] = useState(configuracion.moneda || '$');
+  const [maxColaboradores, setMaxColaboradores] = useState(configuracion.maxColaboradores || 50);
   const [horarioApertura, setHorarioApertura] = useState(configuracion.horarioApertura);
   const [horarioCierre, setHorarioCierre] = useState(configuracion.horarioCierre);
   const [intervaloMinutos, setIntervaloMinutos] = useState(configuracion.intervaloMinutos);
@@ -85,6 +87,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       setTelefonoSalon(configuracion.telefonoSalon);
       setDireccion(configuracion.direccion);
       setMoneda(configuracion.moneda || '$');
+      setMaxColaboradores(configuracion.maxColaboradores || 50);
       setHorarioApertura(configuracion.horarioApertura);
       setHorarioCierre(configuracion.horarioCierre);
       setIntervaloMinutos(configuracion.intervaloMinutos);
@@ -138,6 +141,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       telefonoSalon: telefonoSalon.trim(),
       direccion: direccion.trim(),
       moneda: moneda.trim() || '$',
+      maxColaboradores: esSuperAdmin ? (Number(maxColaboradores) || 50) : (configuracion.maxColaboradores || 50),
       horarioApertura,
       horarioCierre,
       intervaloMinutos: Number(intervaloMinutos),
@@ -507,14 +511,74 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
             </div>
           </div>
 
-          {/* Conexión Firebase (SÓLO VISIBLE PARA EL SUPERADMINISTRADOR) */}
+          {/* LÍMITE MÁXIMO DE COLABORADORAS (EXCLUSIVO SUPERUSUARIO: 1 A 50) */}
+          {esSuperAdmin && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-amber-800" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950">
+                    Límite Máximo de Colaboradoras (1 a 50)
+                  </h4>
+                </div>
+                <span className="rounded-md bg-amber-200/80 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                  👑 Superusuario
+                </span>
+              </div>
+
+              <p className="text-xs text-amber-900/80">
+                Como <strong>Superusuario</strong>, puedes aumentar o reducir la capacidad de colaboradoras permitidas en el sistema (entre 1 y 50).
+              </p>
+
+              <div className="flex items-center gap-4 pt-1">
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="range"
+                    min={1}
+                    max={50}
+                    value={maxColaboradores}
+                    onChange={(e) => setMaxColaboradores(Number(e.target.value))}
+                    className="w-full accent-[#B85D75] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-amber-900/70 font-semibold px-0.5">
+                    <span>1</span>
+                    <span>10</span>
+                    <span>25</span>
+                    <span>50 colaboradoras</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 py-1.5 shrink-0 shadow-2xs">
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={maxColaboradores}
+                    onChange={(e) => {
+                      const val = Math.min(50, Math.max(1, Number(e.target.value) || 1));
+                      setMaxColaboradores(val);
+                    }}
+                    className="w-10 text-center text-xs font-bold text-[#2D2424] focus:outline-hidden"
+                  />
+                  <span className="text-[11px] font-bold text-amber-900">Máx.</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-white/80 p-2 border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between">
+                <span>Registradas actualmente: <strong>{colaboradores.length}</strong></span>
+                <span>Capacidad disponible: <strong>{Math.max(0, maxColaboradores - colaboradores.length)}</strong> lugares libres</span>
+              </div>
+            </div>
+          )}
+
+          {/* Conexión Firebase (SÓLO VISIBLE PARA EL SUPERUSUARIO) */}
           {esSuperAdmin && (
             <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3 animate-in fade-in duration-150">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-[#B85D75]" />
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424]">
-                    Sincronización Cloud Firebase Firestore (Superadmin)
+                    Sincronización Cloud Firebase Firestore (Superusuario)
                   </h4>
                 </div>
                 <span

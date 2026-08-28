@@ -117,10 +117,11 @@ export interface ConfiguracionSalon {
   horarioCierre: string;
   intervaloMinutos: number;
   pinAdmin: string;
-  pinSuperAdmin?: string; // Contraseña de superadministrador (por defecto "onix1974")
+  pinSuperAdmin?: string; // Contraseña de superusuario (por defecto "onix1974")
   administradores?: AdministradorAdicional[]; // Administradores creados por el superusuario
   alertaSonoraActiva: boolean;
   moneda: string;
+  maxColaboradores?: number; // Límite máximo de colaboradoras (1 a 50) configurado por el superusuario
   zonaHoraria?: string; // Huso horario del salón (por defecto "America/Panama")
   especialidades?: Especialidad[];
   firebaseConfig?: {

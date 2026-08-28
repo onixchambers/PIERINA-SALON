@@ -189,6 +189,12 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
       activo: formServiciosAsignados[sId].activo,
     }));
 
+    const maxPermitido = configuracion.maxColaboradores || 50;
+    if (!editandoId && colaboradores.length >= maxPermitido) {
+      alert(`Has alcanzado el límite máximo de ${maxPermitido} colaboradoras configurado para este salón. Para registrar más colaboradoras, el Superusuario puede aumentar la capacidad en Ajustes del Salón (hasta 50).`);
+      return;
+    }
+
     // Contraseña automática por defecto ([nombre]123) o mantener la que la colaboradora ya configuró
     const defaultPassword = generarPasswordPorDefecto(formNombre);
     const targetOriginal = colaboradores.find((c) => c.id === editandoId);
@@ -240,10 +246,11 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     e.preventDefault();
     if (!nuevoAdminNombre.trim() || !nuevoAdminPin.trim()) return;
 
-    const nuevoAdmin: AdministradorAdicional = {
+    const nuevoAdmin = {
       id: `admin-${Date.now()}`,
       nombre: nuevoAdminNombre.trim(),
       pin: nuevoAdminPin.trim(),
+      password: nuevoAdminPin.trim(),
       activo: true,
       creadoEn: new Date().toISOString(),
     };
@@ -262,6 +269,8 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
       .join('');
   };
 
+  const maxColaboradoresPermitidas = configuracion.maxColaboradores || 50;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl border border-[#E6D7CB] bg-[#FAF6F0] p-6 shadow-2xl">
@@ -272,11 +281,16 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
               <Users className="h-5 w-5 text-[#E07A5F]" />
             </div>
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#B85D75]">
-                Equipo del Salón
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#B85D75]">
+                  Equipo del Salón
+                </span>
+                <span className="rounded-full bg-[#FAF0E6] border border-[#E6D7CB] px-2 py-0.5 text-[10px] font-bold text-[#8C5845]">
+                  {colaboradores.length} / {maxColaboradoresPermitidas} Colaboradoras
+                </span>
+              </div>
               <h3 className="text-lg font-serif font-bold text-[#2D2424]">
-                Gestión de Colaboradoras (Hasta 10 perfiles)
+                Gestión de Colaboradoras
               </h3>
             </div>
           </div>
@@ -663,7 +677,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                   </h4>
                 </div>
                 <span className="text-[10px] text-purple-700 font-semibold">
-                  Acceso Exclusivo Superadmin
+                  Acceso Exclusivo Superusuario
                 </span>
               </div>
 

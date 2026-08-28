@@ -253,6 +253,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
             pinAdmin: pinAdminMigrado,
             pinSuperAdmin: conf.pinSuperAdmin || 'onix1974',
             administradores: conf.administradores || [],
+            maxColaboradores: conf.maxColaboradores || 50,
             zonaHoraria: conf.zonaHoraria || 'America/Panama',
             horarioApertura: horarioAperturaMigrado,
             horarioCierre: horarioCierreMigrado,
@@ -475,7 +476,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     if (pinMin === confSuperMin || pinMin === 'onix1974') {
       const sesion: UsuarioSesion = {
         tipo: 'superadmin',
-        nombre: 'Superadministrador',
+        nombre: 'Superusuario',
+        esSuperAdmin: true,
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));

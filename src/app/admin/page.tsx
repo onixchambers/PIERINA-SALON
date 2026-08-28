@@ -206,7 +206,7 @@ export default function AdminPage() {
     } else if (usuarioSesion?.tipo === 'superadmin' || usuarioSesion?.esSuperAdmin) {
       const superPin = (configuracion.pinSuperAdmin || 'onix1974').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (actualMin !== superPin && actualMin !== 'onix1974') {
-        setErrorCambioPin('La contraseña actual de superadministrador es incorrecta.');
+        setErrorCambioPin('La contraseña actual de superusuario es incorrecta.');
         return;
       }
     } else {
@@ -417,7 +417,7 @@ export default function AdminPage() {
                 : 'bg-rose-50 text-[#B85D75] font-bold'
             }`}
           >
-            {esSuperAdmin ? '👑 Superadministrador' : esColaboradora ? 'Colaboradora' : 'Administración Total'}
+            {esSuperAdmin ? '👑 Superusuario' : esColaboradora ? 'Colaboradora' : 'Administración Total'}
           </span>
         </div>
 
@@ -436,7 +436,7 @@ export default function AdminPage() {
             title="Cambiar mi contraseña de acceso de forma segura y privada"
           >
             <KeyRound className="h-3.5 w-3.5 text-amber-700" />
-            <span>🔑 Cambiar Mi Contraseña</span>
+            <span>Cambiar Mi Contraseña</span>
           </button>
 
           <button
