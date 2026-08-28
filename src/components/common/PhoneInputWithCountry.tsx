@@ -46,6 +46,7 @@ export default function PhoneInputWithCountry({
   const [busqueda, setBusqueda] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const userManuallySelectedCountryRef = useRef(false);
 
   // Sincronizar si cambia el valor externo
   useEffect(() => {
@@ -55,7 +56,9 @@ export default function PhoneInputWithCountry({
       setNumeroLocal(local);
     } else if (value === '' || value === undefined) {
       setNumeroLocal('');
-      setPaisSeleccionado(detectarPaisUsuario());
+      if (!userManuallySelectedCountryRef.current) {
+        setPaisSeleccionado(detectarPaisUsuario());
+      }
     } else if (!value.startsWith('+')) {
       setNumeroLocal(value);
     }
@@ -80,6 +83,7 @@ export default function PhoneInputWithCountry({
   }, [abierto]);
 
   const handleSeleccionarPais = (pais: PaisInfo) => {
+    userManuallySelectedCountryRef.current = true;
     setPaisSeleccionado(pais);
     setAbierto(false);
     setBusqueda('');
@@ -87,14 +91,14 @@ export default function PhoneInputWithCountry({
     const formatted = numeroLocal.trim()
       ? `${pais.dial} ${numeroLocal.trim()}`
       : `${pais.dial} `;
-    onChange(formatted.trim());
+    onChange(formatted);
   };
 
   const handleCambiarNumero = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setNumeroLocal(raw);
 
-    const full = raw.trim() ? `${paisSeleccionado.dial} ${raw.trim()}` : '';
+    const full = raw.trim() ? `${paisSeleccionado.dial} ${raw.trim()}` : `${paisSeleccionado.dial} `;
     onChange(full);
   };
 
@@ -115,7 +119,7 @@ export default function PhoneInputWithCountry({
         disabled={disabled}
         onClick={() => setAbierto(!abierto)}
         className="flex items-center gap-1.5 rounded-l-xl border border-r-0 border-[#E6D7CB] bg-[#FAF0E6]/70 px-3 py-2.5 text-xs font-bold text-[#3D322E] hover:bg-[#FAF0E6] transition shrink-0 cursor-pointer focus:outline-hidden disabled:opacity-50"
-        title={`${paisSeleccionado.nombre} (${paisSeleccionado.dial})`}
+        title={`Cambiar país (Actual: ${paisSeleccionado.nombre} ${paisSeleccionado.dial})`}
       >
         <span className="text-base leading-none">{paisSeleccionado.bandera}</span>
         <span className="text-xs font-bold text-[#2D2424]">{paisSeleccionado.dial}</span>
@@ -138,7 +142,7 @@ export default function PhoneInputWithCountry({
 
       {/* Menú Desplegable con Banderitas y Búsqueda */}
       {abierto && (
-        <div className="absolute top-full left-0 z-50 mt-1.5 w-72 max-w-[90vw] rounded-2xl border border-[#E6D7CB] bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-full left-0 z-[100] mt-1.5 w-72 max-w-[90vw] rounded-2xl border border-[#E6D7CB] bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Buscador */}
           <div className="relative mb-2">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8C7A70]" />
