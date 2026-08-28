@@ -32,7 +32,7 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
   const [formNombre, setFormNombre] = useState<string>('');
   const [formCategoria, setFormCategoria] = useState<string>(especialidades[0]?.id || 'unas');
   const [formDuracion, setFormDuracion] = useState<number | string>(60);
-  const [formPrecio, setFormPrecio] = useState<number | string>(500);
+  const [formPrecio, setFormPrecio] = useState<number | string>('');
   const [formDescripcion, setFormDescripcion] = useState<string>('');
   const [formActivo, setFormActivo] = useState<boolean>(true);
 
@@ -43,7 +43,7 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
     setFormNombre(servicio.nombre);
     setFormCategoria(servicio.categoria);
     setFormDuracion(servicio.duracionMin);
-    setFormPrecio(servicio.precio);
+    setFormPrecio(servicio.precio.toString());
     setFormDescripcion(servicio.descripcion);
     setFormActivo(servicio.activo);
   };
@@ -53,7 +53,7 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
     setFormNombre('');
     setFormCategoria(especialidades[0]?.id || 'unas');
     setFormDuracion(60);
-    setFormPrecio(500);
+    setFormPrecio('');
     setFormDescripcion('');
     setFormActivo(true);
   };

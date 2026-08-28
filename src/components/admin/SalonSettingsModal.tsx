@@ -26,6 +26,7 @@ import {
   HardDrive,
   Wifi,
   WifiOff,
+  DollarSign,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
@@ -58,6 +59,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [logoUrl, setLogoUrl] = useState<string | null>(configuracion.logoUrl || null);
   const [telefonoSalon, setTelefonoSalon] = useState(configuracion.telefonoSalon);
   const [direccion, setDireccion] = useState(configuracion.direccion);
+  const [moneda, setMoneda] = useState(configuracion.moneda || '$');
   const [horarioApertura, setHorarioApertura] = useState(configuracion.horarioApertura);
   const [horarioCierre, setHorarioCierre] = useState(configuracion.horarioCierre);
   const [intervaloMinutos, setIntervaloMinutos] = useState(configuracion.intervaloMinutos);
@@ -82,6 +84,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       setLogoUrl(configuracion.logoUrl || null);
       setTelefonoSalon(configuracion.telefonoSalon);
       setDireccion(configuracion.direccion);
+      setMoneda(configuracion.moneda || '$');
       setHorarioApertura(configuracion.horarioApertura);
       setHorarioCierre(configuracion.horarioCierre);
       setIntervaloMinutos(configuracion.intervaloMinutos);
@@ -134,6 +137,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       logoUrl: logoUrl || null,
       telefonoSalon: telefonoSalon.trim(),
       direccion: direccion.trim(),
+      moneda: moneda.trim() || '$',
       horarioApertura,
       horarioCierre,
       intervaloMinutos: Number(intervaloMinutos),
@@ -349,6 +353,70 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
                 placeholder="Calle, Número, Colonia, Ciudad"
                 className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
               />
+            </div>
+          </div>
+
+          {/* SISTEMA DE MONEDA Y DIVISA */}
+          <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424] flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-[#B85D75]" />
+                Moneda / Símbolo de Precios en Toda la App
+              </h4>
+              <span className="rounded-lg bg-[#FAF0E6] px-2.5 py-1 text-xs font-bold text-[#B85D75] border border-[#E6D7CB]">
+                Vista previa: {moneda}25.00
+              </span>
+            </div>
+
+            <p className="text-xs text-[#6B5E59]">
+              Configura el símbolo de moneda de tu país (ej. <strong>B/.</strong> para Panamá, <strong>$</strong> para Dólares/Pesos, <strong>€</strong> para Euros). Se aplicará en el catálogo, citas, administración y mensajes de WhatsApp.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
+                  Símbolo o Código de Moneda Personalizado:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={moneda}
+                  onChange={(e) => setMoneda(e.target.value)}
+                  placeholder="Ej: B/., $, €, S/., Bs., RD$, ₡, Q..."
+                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] font-bold focus:border-[#B85D75] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[#8C7A70] mb-1">
+                  Opciones Rápidas por País:
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: '🇵🇦 B/. (Panamá)', val: 'B/. ' },
+                    { label: '🇺🇸 / 🇲🇽 $ (USD / Pesos)', val: '$' },
+                    { label: '🇪🇺 € (Euros)', val: '€' },
+                    { label: '🇵🇪 S/. (Perú)', val: 'S/. ' },
+                    { label: '🇻🇪 / 🇧🇴 Bs. (Bolívares / Bolivianos)', val: 'Bs. ' },
+                    { label: '🇨🇷 ₡ (Costa Rica)', val: '₡' },
+                    { label: '🇩🇴 RD$ (Rep. Dominicana)', val: 'RD$ ' },
+                    { label: '🇬🇹 Q (Guatemala)', val: 'Q ' },
+                  ].map((m) => (
+                    <button
+                      key={m.val}
+                      type="button"
+                      onClick={() => setMoneda(m.val)}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition cursor-pointer ${
+                        moneda.trim() === m.val.trim()
+                          ? 'border-[#B85D75] bg-[#FAF0E6] text-[#B85D75] font-bold shadow-2xs'
+                          : 'border-[#EAE0D5] bg-[#FAF6F0] text-[#5A4D48] hover:bg-white'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

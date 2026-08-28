@@ -526,11 +526,13 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                             min={0}
                             step="any"
                             disabled={!estadoServ.activo}
-                            value={estadoServ.precio}
+                            placeholder="0"
+                            value={estadoServ.precio === 0 ? '' : estadoServ.precio}
                             onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Number(e.target.value);
                               setFormServiciosAsignados({
                                 ...formServiciosAsignados,
-                                [s.id]: { ...estadoServ, precio: Number(e.target.value) },
+                                [s.id]: { ...estadoServ, precio: val },
                               });
                             }}
                             className="w-20 rounded-lg border border-[#E6D7CB] bg-white py-1 pl-5 pr-1 text-xs font-bold text-[#2D2424] focus:border-[#B85D75] disabled:opacity-50"
