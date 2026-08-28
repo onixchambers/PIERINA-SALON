@@ -31,8 +31,8 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formNombre, setFormNombre] = useState<string>('');
   const [formCategoria, setFormCategoria] = useState<string>(especialidades[0]?.id || 'unas');
-  const [formDuracion, setFormDuracion] = useState<number>(60);
-  const [formPrecio, setFormPrecio] = useState<number>(500);
+  const [formDuracion, setFormDuracion] = useState<number | string>(60);
+  const [formPrecio, setFormPrecio] = useState<number | string>(500);
   const [formDescripcion, setFormDescripcion] = useState<string>('');
   const [formActivo, setFormActivo] = useState<boolean>(true);
 
@@ -66,8 +66,8 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
       id: editandoId || `serv-${Date.now()}`,
       nombre: formNombre.trim(),
       categoria: formCategoria,
-      duracionMin: Number(formDuracion),
-      precio: Number(formPrecio),
+      duracionMin: Number(formDuracion) || 15,
+      precio: Number(formPrecio) || 0,
       descripcion: formDescripcion.trim() || 'Tratamiento exclusivo de belleza.',
       activo: formActivo,
     };
@@ -78,11 +78,11 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl border border-[#E6D7CB] bg-[#FAF6F0] p-6 shadow-2xl">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-[#E6D7CB] bg-[#FAF6F0] p-6 shadow-2xl space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#E8DCCF] pb-4">
+        <div className="flex items-center justify-between border-b border-[#E8DCCF] pb-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B85D75] text-white shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-gold-gradient text-white shadow-xs">
               <Scissors className="h-5 w-5" />
             </div>
             <div>
@@ -102,27 +102,17 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
           </button>
         </div>
 
-        {/* Contenido con Scroll */}
-        <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-6">
+        {/* Scroll Body */}
+        <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           {/* Formulario */}
           <form
             onSubmit={handleGuardar}
-            className="rounded-2xl border-2 border-[#E6D7CB] bg-white p-5 shadow-xs space-y-3"
+            className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3 shadow-xs"
           >
-            <div className="flex items-center justify-between border-b border-[#F4EDE4] pb-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424]">
-                {editandoId ? 'Editar Servicio' : '➕ Añadir Nuevo Servicio'}
-              </h4>
-              {editandoId && (
-                <button
-                  type="button"
-                  onClick={limpiarFormulario}
-                  className="text-xs text-[#B85D75] hover:underline"
-                >
-                  Cancelar Edición
-                </button>
-              )}
-            </div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424] flex items-center gap-1.5">
+              <Plus className="h-4 w-4 text-[#B85D75]" />
+              {editandoId ? 'Editar Servicio' : 'Añadir Nuevo Servicio'}
+            </h4>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -163,10 +153,10 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
                 <input
                   type="number"
                   required
-                  min={15}
-                  step={15}
+                  min={1}
+                  step="any"
                   value={formDuracion}
-                  onChange={(e) => setFormDuracion(Number(e.target.value))}
+                  onChange={(e) => setFormDuracion(e.target.value)}
                   className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
                 />
               </div>
@@ -179,10 +169,11 @@ export default function ServicesManagerModal({ isOpen, onClose }: ServicesManage
                   type="number"
                   required
                   min={0}
-                  step={10}
+                  step="any"
+                  placeholder="Ej: 25, 25.50, 150..."
                   value={formPrecio}
-                  onChange={(e) => setFormPrecio(Number(e.target.value))}
-                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
+                  onChange={(e) => setFormPrecio(e.target.value)}
+                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden font-bold"
                 />
               </div>
             </div>

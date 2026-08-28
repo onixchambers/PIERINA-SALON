@@ -525,6 +525,8 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                           </span>
                           <input
                             type="number"
+                            min={0}
+                            step="any"
                             disabled={!estadoServ.activo}
                             value={estadoServ.precio}
                             onChange={(e) => {
