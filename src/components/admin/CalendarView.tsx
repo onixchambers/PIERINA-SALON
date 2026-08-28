@@ -423,308 +423,376 @@ export default function CalendarView({
       {/* =========================================================================
           VISTA 1: DÍA (Columnas por Colaboradora)
          ========================================================================= */}
-      {vista === 'dia' && (
-        <div className="rounded-3xl border border-[#E6D7CB] bg-white p-4 shadow-sm">
-          <div className="overflow-x-auto">
-            <div className="min-w-[750px]">
-              {/* Encabezado de Colaboradoras */}
-              <div className="grid grid-cols-[80px_repeat(auto-fit,minmax(180px,1fr))] border-b border-[#E8DCCF] pb-3">
-                <div className="text-center text-xs font-bold text-[#8C7A70] self-end pb-1">
-                  Hora
-                </div>
-                {colaboradoresActivas.map((c) => {
-                  const tieneBloqueoDia = bloqueosDia.some(
-                    (b) =>
-                      (b.terapeutaId === c.id || b.colaboradorId === c.id || b.terapeutaId === 'all')
-                  );
+      {vista === 'dia' && (() => {
+        const numColabs = Math.max(1, colaboradoresActivas.length);
+        const colMinWidth = 190;
+        const hourColWidth = 72;
+        const totalMinWidth = hourColWidth + numColabs * colMinWidth;
+        const gridColsStyle = `${hourColWidth}px repeat(${numColabs}, minmax(${colMinWidth}px, 1fr))`;
 
-                  return (
-                    <div key={c.id} className="flex items-center justify-between gap-2 px-3 border-l border-[#F4EDE4]">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Cuadrito de la imagen clickeable en la columna de abajo */}
+        return (
+          <div className="rounded-3xl border border-[#E6D7CB] bg-white p-4 shadow-sm">
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: `${totalMinWidth}px` }}>
+                {/* Encabezado de Colaboradoras */}
+                <div
+                  className="grid border-b border-[#E8DCCF] pb-3"
+                  style={{ gridTemplateColumns: gridColsStyle }}
+                >
+                  <div className="flex items-center justify-center text-xs font-bold text-[#8C7A70] self-end pb-1 pr-2">
+                    <span className="bg-[#FAF6F0] px-2.5 py-1 rounded-lg border border-[#E6D7CB]">
+                      Hora
+                    </span>
+                  </div>
+                  {colaboradoresActivas.map((c) => {
+                    const tieneBloqueoDia = bloqueosDia.some(
+                      (b) =>
+                        b.terapeutaId === c.id || b.colaboradorId === c.id || b.terapeutaId === 'all'
+                    );
+
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 px-3 border-l border-[#F4EDE4]"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Cuadrito de la imagen clickeable en la columna de abajo */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!esColaboradora || c.id === miColaboradorId) {
+                                onOpenChangePhoto?.(c.id);
+                              }
+                            }}
+                            className={`group relative flex items-center justify-center rounded-xl transition shrink-0 ${
+                              !esColaboradora || c.id === miColaboradorId
+                                ? 'cursor-pointer hover:ring-2 hover:ring-[#B85D75] hover:scale-105'
+                                : ''
+                            }`}
+                            title={
+                              c.id === miColaboradorId
+                                ? 'Haz clic para cambiar tu foto de perfil'
+                                : !esColaboradora
+                                ? `Haz clic para cambiar la foto de ${c.nombre}`
+                                : c.nombre
+                            }
+                          >
+                            {c.foto ? (
+                              <img
+                                src={c.foto}
+                                alt={c.nombre}
+                                className="h-9 w-9 rounded-xl object-cover border border-[#E6D7CB] shadow-2xs"
+                              />
+                            ) : (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-gold-gradient text-white font-serif font-bold text-xs shadow-2xs">
+                                {obtenerIniciales(c.nombre)}
+                              </div>
+                            )}
+
+                            {(!esColaboradora || c.id === miColaboradorId) && (
+                              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#2D2424] text-white shadow-2xs group-hover:bg-[#B85D75] transition">
+                                <Camera className="h-2.5 w-2.5 text-white" />
+                              </span>
+                            )}
+                          </button>
+
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-bold text-[#2D2424] truncate">{c.nombre}</h4>
+                            <span className="text-[10px] text-[#8C7A70] block">
+                              {c.horarioBase.horaInicio} - {c.horarioBase.horaFin}
+                            </span>
+                          </div>
+                        </div>
+
+                        {tieneBloqueoDia &&
+                          (!esColaboradora || !miColaboradorId || c.id === miColaboradorId) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDesbloquearTodoElDia(fechaActual, c.id)}
+                              className="rounded-lg bg-stone-900 hover:bg-rose-600 text-white px-2 py-1 text-[10px] font-bold shadow-xs transition shrink-0 flex items-center gap-1 cursor-pointer"
+                              title="Desbloquear y liberar todo el día para esta colaboradora"
+                            >
+                              <span>🔓</span>
+                              <span>Desbloquear Todo</span>
+                            </button>
+                          )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Filas de Horas */}
+                <div className="divide-y divide-[#F4EDE4]">
+                  {horasArray.map((hora) => (
+                    <div
+                      key={hora}
+                      className="grid min-h-[64px] hover:bg-[#FAF6F0]/20 transition"
+                      style={{ gridTemplateColumns: gridColsStyle }}
+                    >
+                      {/* Columna de Hora Clickeable */}
+                      <div className="py-2 pr-2.5 flex items-center justify-end">
                         <button
                           type="button"
-                          onClick={() => {
-                            if (!esColaboradora || c.id === miColaboradorId) {
-                              onOpenChangePhoto?.(c.id);
-                            }
-                          }}
-                          className={`group relative flex items-center justify-center rounded-xl transition shrink-0 ${
-                            !esColaboradora || c.id === miColaboradorId
-                              ? 'cursor-pointer hover:ring-2 hover:ring-[#B85D75] hover:scale-105'
-                              : ''
-                          }`}
-                          title={
-                            c.id === miColaboradorId
-                              ? 'Haz clic para cambiar tu foto de perfil'
-                              : !esColaboradora
-                              ? `Haz clic para cambiar la foto de ${c.nombre}`
-                              : c.nombre
+                          onClick={() =>
+                            onSlotClick(
+                              fechaActual,
+                              hora,
+                              filtroColaborador !== 'all' ? filtroColaborador : undefined
+                            )
                           }
+                          className="text-xs font-bold text-[#6B5E59] hover:text-[#B85D75] hover:bg-white px-2 py-1 rounded-lg transition border border-transparent hover:border-[#E6D7CB] shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 group/hbtn"
+                          title={`Agendar Cita a las ${hora}`}
                         >
-                          {c.foto ? (
-                            <img
-                              src={c.foto}
-                              alt={c.nombre}
-                              className="h-9 w-9 rounded-xl object-cover border border-[#E6D7CB] shadow-2xs"
-                            />
-                          ) : (
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-gold-gradient text-white font-serif font-bold text-xs shadow-2xs">
-                              {obtenerIniciales(c.nombre)}
-                            </div>
-                          )}
-
-                          {(!esColaboradora || c.id === miColaboradorId) && (
-                            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#2D2424] text-white shadow-2xs group-hover:bg-[#B85D75] transition">
-                              <Camera className="h-2.5 w-2.5 text-white" />
-                            </span>
-                          )}
+                          <span className="group-hover/hbtn:underline">{hora}</span>
                         </button>
-
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-[#2D2424] truncate">{c.nombre}</h4>
-                          <span className="text-[10px] text-[#8C7A70] block">
-                            {c.horarioBase.horaInicio} - {c.horarioBase.horaFin}
-                          </span>
-                        </div>
                       </div>
 
-                      {tieneBloqueoDia && (!esColaboradora || !miColaboradorId || c.id === miColaboradorId) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDesbloquearTodoElDia(fechaActual, c.id)}
-                          className="rounded-lg bg-stone-900 hover:bg-rose-600 text-white px-2 py-1 text-[10px] font-bold shadow-xs transition shrink-0 flex items-center gap-1 cursor-pointer"
-                          title="Desbloquear y liberar todo el día para esta colaboradora"
-                        >
-                          <span>🔓</span>
-                          <span>Desbloquear Todo</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      {/* Columnas de Colaboradoras */}
+                      {colaboradoresActivas.map((colab) => {
+                        const citasEnHora = citasDia.filter(
+                          (c) =>
+                            (c.terapeutaId === colab.id || c.colaboradorId === colab.id) &&
+                            c.horaInicio === hora
+                        );
 
-              {/* Filas de Horas */}
-              <div className="divide-y divide-[#F4EDE4]">
-                {horasArray.map((hora) => (
-                  <div
-                    key={hora}
-                    className="grid grid-cols-[80px_repeat(auto-fit,minmax(180px,1fr))] min-h-[64px]"
-                  >
-                    {/* Columna de Hora */}
-                    <div className="py-2 pr-3 text-right text-xs font-semibold text-[#8C7A70]">
-                      {hora}
-                    </div>
+                        const bloqueoEnHora = bloqueosDia.find((b) => {
+                          if (
+                            b.terapeutaId !== 'all' &&
+                            b.terapeutaId !== colab.id &&
+                            b.colaboradorId !== colab.id
+                          )
+                            return false;
+                          if (b.tipo === 'dia_completo') return true;
+                          if (b.tipo === 'franja_horaria' && b.horaInicio && b.horaFin) {
+                            const hm = timeToMinutes(hora);
+                            return (
+                              hm >= timeToMinutes(b.horaInicio) &&
+                              hm < timeToMinutes(b.horaFin)
+                            );
+                          }
+                          return false;
+                        });
 
-                    {/* Columnas de Colaboradoras */}
-                    {colaboradoresActivas.map((colab) => {
-                      const citasEnHora = citasDia.filter(
-                        (c) => (c.terapeutaId === colab.id || c.colaboradorId === colab.id) && c.horaInicio === hora
-                      );
+                        const slotId = `${fechaActual}_${hora}_${colab.id}`;
+                        const isHovered = slotHoverId === slotId;
+                        const esDestinoPermitido =
+                          !esColaboradora || !miColaboradorId || colab.id === miColaboradorId;
 
-                      const bloqueoEnHora = bloqueosDia.find((b) => {
-                        if (b.terapeutaId !== 'all' && b.terapeutaId !== colab.id && b.colaboradorId !== colab.id) return false;
-                        if (b.tipo === 'dia_completo') return true;
-                        if (b.tipo === 'franja_horaria' && b.horaInicio && b.horaFin) {
-                          const hm = timeToMinutes(hora);
-                          return hm >= timeToMinutes(b.horaInicio) && hm < timeToMinutes(b.horaFin);
-                        }
-                        return false;
-                      });
-
-                      const slotId = `${fechaActual}_${hora}_${colab.id}`;
-                      const isHovered = slotHoverId === slotId;
-                      const esDestinoPermitido = !esColaboradora || !miColaboradorId || colab.id === miColaboradorId;
-
-                      return (
-                        <div
-                          key={colab.id}
-                          onDragOver={(e) => handleDragOver(e, slotId, colab.id)}
-                          onDragLeave={() => setSlotHoverId(null)}
-                          onDrop={(e) => handleDrop(e, fechaActual, hora, colab.id)}
-                          onClick={() => {
-                            if (arrastrandoCita && esDestinoPermitido) {
-                              handleTouchEndSlot(fechaActual, hora, colab.id);
-                            }
-                          }}
-                          className={`relative border-l border-[#F4EDE4] p-1.5 transition group ${
-                            isHovered && esDestinoPermitido
-                              ? 'bg-[#FFF0EB] ring-2 ring-[#B85D75] ring-inset'
-                              : arrastrandoCita && !esDestinoPermitido
-                              ? 'opacity-40 bg-stone-100/50 cursor-not-allowed'
-                              : ''
-                          }`}
-                        >
-                          {/* Citas Arrastrables (Soporta múltiples citas simultáneas a la misma hora) */}
-                          {citasEnHora.length > 0 && (
-                            <div
-                              className={
-                                citasEnHora.length > 1
-                                  ? 'grid grid-cols-1 md:grid-cols-2 gap-1.5 w-full'
-                                  : 'space-y-1.5 w-full'
+                        return (
+                          <div
+                            key={colab.id}
+                            onDragOver={(e) => handleDragOver(e, slotId, colab.id)}
+                            onDragLeave={() => setSlotHoverId(null)}
+                            onDrop={(e) => handleDrop(e, fechaActual, hora, colab.id)}
+                            onClick={() => {
+                              if (arrastrandoCita && esDestinoPermitido) {
+                                handleTouchEndSlot(fechaActual, hora, colab.id);
+                              } else if (
+                                citasEnHora.length === 0 &&
+                                !bloqueoEnHora &&
+                                esDestinoPermitido
+                              ) {
+                                onSlotClick(fechaActual, hora, colab.id);
                               }
-                            >
-                              {citasEnHora.map((citaEnHora) => {
-                                const estilo = getEstadoEstilo(citaEnHora.estado);
-                                const nombresServicios = citaEnHora.servicioIds
-                                  .map((id) => servicios.find((s) => s.id === id)?.nombre || 'Servicio')
-                                  .join(' + ');
+                            }}
+                            className={`relative border-l border-[#F4EDE4] p-1.5 transition group select-none ${
+                              isHovered && esDestinoPermitido
+                                ? 'bg-[#FFF0EB] ring-2 ring-[#B85D75] ring-inset'
+                                : arrastrandoCita && !esDestinoPermitido
+                                ? 'opacity-40 bg-stone-100/50 cursor-not-allowed'
+                                : citasEnHora.length === 0 && !bloqueoEnHora && esDestinoPermitido
+                                ? 'cursor-pointer hover:bg-[#FAF0E6]/50 active:bg-[#FAF0E6]'
+                                : ''
+                            }`}
+                          >
+                            {/* Citas Arrastrables */}
+                            {citasEnHora.length > 0 && (
+                              <div
+                                className={
+                                  citasEnHora.length > 1
+                                    ? 'grid grid-cols-1 md:grid-cols-2 gap-1.5 w-full'
+                                    : 'space-y-1.5 w-full'
+                                }
+                              >
+                                {citasEnHora.map((citaEnHora) => {
+                                  const estilo = getEstadoEstilo(citaEnHora.estado);
+                                  const nombresServicios = citaEnHora.servicioIds
+                                    .map(
+                                      (id) =>
+                                        servicios.find((s) => s.id === id)?.nombre || 'Servicio'
+                                    )
+                                    .join(' + ');
 
-                                return (
-                                  <div
-                                    key={citaEnHora.id}
-                                    draggable={true}
-                                    onDragStart={(e) => handleDragStart(e, citaEnHora)}
-                                    onDragEnd={handleDragEnd}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!arrastrandoCita) onSelectCita(citaEnHora);
-                                    }}
-                                    className={`rounded-xl p-2.5 shadow-xs cursor-grab active:cursor-grabbing border transition hover:scale-[1.01] select-none ${
-                                      arrastrandoCita?.id === citaEnHora.id
-                                        ? 'opacity-40 border-dashed border-[#B85D75]'
-                                        : estilo.card
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-1">
-                                      <div className="flex items-center gap-1 min-w-0">
-                                        <span className="text-[10px] text-[#8C7A70] cursor-grab">⋮⋮</span>
-                                        <span className="font-bold text-xs truncate">
-                                          {citaEnHora.clienteNombre}
+                                  return (
+                                    <div
+                                      key={citaEnHora.id}
+                                      draggable={true}
+                                      onDragStart={(e) => handleDragStart(e, citaEnHora)}
+                                      onDragEnd={handleDragEnd}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!arrastrandoCita) onSelectCita(citaEnHora);
+                                      }}
+                                      className={`rounded-xl p-2.5 shadow-xs cursor-grab active:cursor-grabbing border transition hover:scale-[1.01] select-none ${
+                                        arrastrandoCita?.id === citaEnHora.id
+                                          ? 'opacity-40 border-dashed border-[#B85D75]'
+                                          : estilo.card
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <div className="flex items-center gap-1 min-w-0">
+                                          <span className="text-[10px] text-[#8C7A70] cursor-grab">⋮⋮</span>
+                                          <span className="font-bold text-xs truncate">
+                                            {citaEnHora.clienteNombre}
+                                          </span>
+                                        </div>
+                                        <span
+                                          className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold shrink-0 ${estilo.badge}`}
+                                        >
+                                          {citaEnHora.estado}
                                         </span>
                                       </div>
-                                      <span
-                                        className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold shrink-0 ${estilo.badge}`}
-                                      >
-                                        {citaEnHora.estado}
-                                      </span>
+
+                                      <p className="mt-1 text-[11px] font-medium opacity-90 line-clamp-1">
+                                        {nombresServicios}
+                                      </p>
+
+                                      <div className="mt-1 flex items-center justify-between text-[10px] opacity-80">
+                                        <span>
+                                          {citaEnHora.horaInicio} - {citaEnHora.horaFin}
+                                        </span>
+                                        <span className="font-bold">
+                                          {configuracion.moneda}{citaEnHora.precioTotal}
+                                        </span>
+                                      </div>
+
+                                      {/* Botón táctil para mover en móviles */}
+                                      <div className="mt-1.5 pt-1 border-t border-black/5 flex items-center justify-between sm:hidden">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setArrastrandoCita(citaEnHora);
+                                          }}
+                                          className="text-[9px] font-bold text-[#B85D75] bg-white rounded px-1.5 py-0.5 border border-[#E6D7CB]"
+                                        >
+                                          {arrastrandoCita?.id === citaEnHora.id
+                                            ? 'Seleccionada: Toca destino'
+                                            : '⇄ Mover / Reprogramar'}
+                                        </button>
+                                      </div>
                                     </div>
+                                  );
+                                })}
+                              </div>
+                            )}
 
-                                    <p className="mt-1 text-[11px] font-medium opacity-90 line-clamp-1">
-                                      {nombresServicios}
-                                    </p>
+                            {/* Bloqueo */}
+                            {citasEnHora.length === 0 && bloqueoEnHora && (
+                              <div
+                                draggable={esDestinoPermitido}
+                                onDragStart={(e) => handleDragStartBloqueo(e, bloqueoEnHora)}
+                                onDragEnd={handleDragEnd}
+                                className={`rounded-xl bg-stone-950/85 backdrop-blur-xs border border-stone-700/90 p-2 text-white shadow-md flex items-center justify-between transition ${
+                                  esDestinoPermitido
+                                    ? 'cursor-grab active:cursor-grabbing hover:bg-stone-900'
+                                    : 'cursor-default'
+                                } select-none ${
+                                  arrastrandoBloqueo?.id === bloqueoEnHora.id
+                                    ? 'opacity-40 border-dashed border-white'
+                                    : ''
+                                }`}
+                                title={
+                                  esDestinoPermitido
+                                    ? 'Horario Bloqueado - Arrastra para mover o presiona el botón para desbloquear'
+                                    : 'Horario Bloqueado de otra colaboradora'
+                                }
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <ShieldBan className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                                  <div className="truncate">
+                                    <span className="font-bold text-xs text-white block truncate">
+                                      {bloqueoEnHora.motivo}
+                                    </span>
+                                    <span className="text-[9px] text-stone-300 block">
+                                      ⛔{' '}
+                                      {bloqueoEnHora.tipo === 'dia_completo'
+                                        ? 'Día Completo'
+                                        : `${bloqueoEnHora.horaInicio || hora} - ${
+                                            bloqueoEnHora.horaFin || ''
+                                          }`}
+                                    </span>
+                                  </div>
+                                </div>
 
-                                    <div className="mt-1 flex items-center justify-between text-[10px] opacity-80">
-                                      <span>
-                                        {citaEnHora.horaInicio} - {citaEnHora.horaFin}
-                                      </span>
-                                      <span className="font-bold">
-                                        {configuracion.moneda}{citaEnHora.precioTotal}
-                                      </span>
-                                    </div>
+                                {esDestinoPermitido && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDesbloquear(bloqueoEnHora.id);
+                                    }}
+                                    className="rounded-lg bg-stone-800/90 hover:bg-rose-600 text-stone-300 hover:text-white p-1 text-[10px] transition border border-stone-600 ml-1 shrink-0 cursor-pointer"
+                                    title="Desbloquear este horario"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
-                                    {/* Botón táctil para mover en móviles */}
-                                    <div className="mt-1.5 pt-1 border-t border-black/5 flex items-center justify-between sm:hidden">
+                            {/* Opciones en Casilla Vacía o Destino de Drag */}
+                            {citasEnHora.length === 0 && !bloqueoEnHora && (
+                              <div className="flex items-center justify-center gap-1.5 h-full min-h-[44px]">
+                                {(arrastrandoCita || arrastrandoBloqueo) && esDestinoPermitido ? (
+                                  <div className="text-center">
+                                    <span className="rounded-lg bg-[#FAF0E6] text-[#B85D75] border border-[#E6D7CB] px-2 py-1 text-[10px] font-bold block animate-pulse">
+                                      Soltar aquí ({hora})
+                                    </span>
+                                  </div>
+                                ) : esDestinoPermitido ? (
+                                  <div className="flex items-center justify-center gap-1.5 transition">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSlotClick(fechaActual, hora, colab.id);
+                                      }}
+                                      className="flex items-center gap-1 rounded-lg bg-white border border-[#E6D7CB] px-2.5 py-1 text-[11px] font-bold text-[#5A4D48] shadow-2xs hover:bg-[#B85D75] hover:text-white hover:border-[#B85D75] transition cursor-pointer active:scale-95 group/btn"
+                                      title={`Agendar Cita con ${colab.nombre} a las ${hora}`}
+                                    >
+                                      <Plus className="h-3 w-3 text-[#B85D75] group-hover/btn:text-white transition" />
+                                      <span>+ Cita</span>
+                                    </button>
+
+                                    {onQuickBlock && (
                                       <button
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setArrastrandoCita(citaEnHora);
+                                          onQuickBlock(fechaActual, hora, colab.id);
                                         }}
-                                        className="text-[9px] font-bold text-[#B85D75] bg-white rounded px-1.5 py-0.5 border border-[#E6D7CB]"
+                                        className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-stone-100 border border-stone-300 px-2 py-1 text-[10px] font-bold text-stone-600 shadow-2xs hover:bg-stone-800 hover:text-white hover:border-stone-800 transition cursor-pointer active:scale-95"
+                                        title="Bloquear este horario"
                                       >
-                                        {arrastrandoCita?.id === citaEnHora.id ? 'Seleccionada: Toca destino' : '⇄ Mover / Reprogramar'}
+                                        <Ban className="h-2.5 w-2.5" />
                                       </button>
-                                    </div>
+                                    )}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Bloqueo en Negro Transparente Oscuro con Letras Blancas y Drag & Drop */}
-                          {citasEnHora.length === 0 && bloqueoEnHora && (
-                            <div
-                              draggable={esDestinoPermitido}
-                              onDragStart={(e) => handleDragStartBloqueo(e, bloqueoEnHora)}
-                              onDragEnd={handleDragEnd}
-                              className={`rounded-xl bg-stone-950/85 backdrop-blur-xs border border-stone-700/90 p-2 text-white shadow-md flex items-center justify-between transition ${
-                                esDestinoPermitido
-                                  ? 'cursor-grab active:cursor-grabbing hover:bg-stone-900'
-                                  : 'cursor-default'
-                              } select-none ${
-                                arrastrandoBloqueo?.id === bloqueoEnHora.id
-                                  ? 'opacity-40 border-dashed border-white'
-                                  : ''
-                              }`}
-                              title={
-                                esDestinoPermitido
-                                  ? 'Horario Bloqueado - Arrastra para mover o presiona el botón para desbloquear'
-                                  : 'Horario Bloqueado de otra colaboradora'
-                              }
-                            >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <ShieldBan className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                                <div className="truncate">
-                                  <span className="font-bold text-xs text-white block truncate">
-                                    {bloqueoEnHora.motivo}
-                                  </span>
-                                  <span className="text-[9px] text-stone-300 block">
-                                    ⛔ {bloqueoEnHora.tipo === 'dia_completo' ? 'Día Completo' : `${bloqueoEnHora.horaInicio || hora} - ${bloqueoEnHora.horaFin || ''}`}
-                                  </span>
-                                </div>
+                                ) : null}
                               </div>
-
-                              {esDestinoPermitido && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDesbloquear(bloqueoEnHora.id);
-                                  }}
-                                  className="rounded-lg bg-stone-800/90 hover:bg-rose-600 text-stone-300 hover:text-white p-1 text-[10px] transition border border-stone-600 ml-1 shrink-0 cursor-pointer"
-                                  title="Desbloquear este horario"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Opciones en Casilla Vacía o Destino de Drag */}
-                          {citasEnHora.length === 0 && !bloqueoEnHora && (
-                            <div className="flex items-center justify-center gap-1.5 h-full min-h-[44px]">
-                              {(arrastrandoCita || arrastrandoBloqueo) && esDestinoPermitido ? (
-                                <div className="text-center">
-                                  <span className="rounded-lg bg-[#FAF0E6] text-[#B85D75] border border-[#E6D7CB] px-2 py-1 text-[10px] font-bold block animate-pulse">
-                                    Soltar aquí ({hora})
-                                  </span>
-                                </div>
-                              ) : esDestinoPermitido ? (
-                                <div className="hidden group-hover:flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => onSlotClick(fechaActual, hora, colab.id)}
-                                    className="flex items-center gap-1 rounded-lg bg-[#2D2424] px-2 py-1 text-[10px] font-bold text-white shadow-2xs hover:bg-stone-800"
-                                    title="Agendar Cita en este horario"
-                                  >
-                                    <Plus className="h-3 w-3 text-[#E07A5F]" />
-                                    Cita
-                                  </button>
-                                  {onQuickBlock && (
-                                    <button
-                                      onClick={() => onQuickBlock(fechaActual, hora, colab.id)}
-                                      className="flex items-center gap-1 rounded-lg bg-amber-600 px-2 py-1 text-[10px] font-bold text-white shadow-2xs hover:bg-amber-700"
-                                      title="Bloquear este horario"
-                                    >
-                                      <Ban className="h-3 w-3" />
-                                      Bloquear
-                                    </button>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* =========================================================================
           VISTA 2: SEMANA (7 Días)
