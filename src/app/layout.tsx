@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SalonProvider } from '@/context/SalonContext';
 import NotificationBanner from '@/components/NotificationBanner';
+import OfflineSyncBanner from '@/components/OfflineSyncBanner';
 
 export const metadata: Metadata = {
   title: 'Pierina Salón | Cejas, Pestañas y Más - Citas en Línea',
@@ -44,6 +45,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#FAF6F0] text-[#2D2424] antialiased selection:bg-[#B85D75]/20 selection:text-[#B85D75]">
         <SalonProvider>
+          <OfflineSyncBanner />
           {children}
           <NotificationBanner />
         </SalonProvider>

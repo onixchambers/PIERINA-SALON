@@ -23,6 +23,9 @@ import {
   Shield,
   Eye,
   EyeOff,
+  HardDrive,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
@@ -38,6 +41,9 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
     colaboradores,
     especialidades,
     isFirebaseConnected,
+    isOnline,
+    pendingSyncCount,
+    limpiarCacheLocal7Dias,
     usuarioSesion,
     actualizarConfiguracion,
     guardarEspecialidad,
@@ -67,6 +73,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [fbAppId, setFbAppId] = useState(configuracion.firebaseConfig?.appId || '');
 
   const [guardadoExito, setGuardadoExito] = useState(false);
+  const [mensajeLimpieza, setMensajeLimpieza] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -478,6 +485,68 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
               </div>
             </div>
           )}
+
+          {/* MANTENIMIENTO Y ALMACENAMIENTO LOCAL OFFLINE (7 DÍAS) */}
+          <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424] flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-[#B85D75]" />
+                Almacenamiento Local y Persistencia Offline
+              </h4>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                  isOnline
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-900'
+                }`}
+              >
+                {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                {isOnline ? 'Online (Nube)' : 'Modo Offline'}
+              </span>
+            </div>
+
+            <p className="text-xs text-[#6B5E59]">
+              El sistema guarda los datos en la memoria del teléfono o computadora para funcionar sin internet. Cuando recuperas la conexión, tus cambios se sincronizan automáticamente.
+            </p>
+
+            <div className="rounded-xl bg-[#FAF6F0] p-3 border border-[#EFE7DE] space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-[#3D322E]">
+                  🧹 Poda automática de memoria (Cada 7 días):
+                </span>
+                <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                  Activa
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8C7A70]">
+                Para no saturar los celulares de las colaboradoras, las citas completadas/rechazadas de más de 7 días se purgan de la memoria local del equipo (quedan seguras en la nube).
+              </p>
+
+              <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = limpiarCacheLocal7Dias(true);
+                    setMensajeLimpieza(
+                      res.purgadas > 0
+                        ? `¡Optimización completada! Se purgaron ${res.purgadas} registros antiguos (${res.espacioLiberadoAprox} liberados).`
+                        : 'El almacenamiento ya está 100% optimizado y sin saturación.'
+                    );
+                    setTimeout(() => setMensajeLimpieza(null), 5000);
+                  }}
+                  className="rounded-xl border border-[#E6D7CB] bg-white px-3 py-1.5 text-xs font-bold text-[#5A4D48] hover:bg-[#F4EDE4] transition shadow-2xs cursor-pointer"
+                >
+                  Liberar memoria local ahora
+                </button>
+
+                {mensajeLimpieza && (
+                  <span className="text-[11px] font-semibold text-emerald-700 animate-in fade-in">
+                    {mensajeLimpieza}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Reset */}
           <div className="flex items-center justify-between pt-2 text-xs">

@@ -25,6 +25,13 @@ import {
 import { soundService } from '@/lib/sound';
 import { initFirebase } from '@/lib/firebase';
 import {
+  STORAGE_KEYS,
+  obtenerColaOffline,
+  encolarAccionOffline,
+  sincronizarColaConFirestore,
+  ejecutarMantenimientoLocalStorage7Dias,
+} from '@/lib/offlineManager';
+import {
   collection,
   doc,
   setDoc,
@@ -49,12 +56,16 @@ interface SalonContextType {
   bloqueos: BloqueoDisponibilidad[];
   configuracion: ConfiguracionSalon;
   isFirebaseConnected: boolean;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  isSyncingOffline: boolean;
   cargando: boolean;
   usuarioSesion: UsuarioSesion | null;
   nuevaSolicitudNotificacion: Cita | null;
   loginPorPin: (pin: string) => LoginResultado;
   logout: () => void;
   descartarNotificacion: () => void;
+  limpiarCacheLocal7Dias: (forzar?: boolean) => { purgadas: number; espacioLiberadoAprox: string };
   crearCita: (datos: {
     clienteNombre: string;
     clienteTelefono: string;
@@ -113,16 +124,6 @@ interface SalonContextType {
 
 const SalonContext = createContext<SalonContextType | null>(null);
 
-const STORAGE_KEYS = {
-  CITAS: 'pierina_citas_v1',
-  SERVICIOS: 'pierina_servicios_v1',
-  COLABORADORES: 'pierina_colaboradores_v1',
-  ESPECIALIDADES: 'pierina_especialidades_v1',
-  BLOQUEOS: 'pierina_bloqueos_v1',
-  CONFIG: 'pierina_config_v1',
-  SESION: 'pierina_usuario_sesion',
-};
-
 function generarCodigoCita(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `PIER-${num}`;
@@ -137,6 +138,9 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   const [configuracion, setConfiguracion] = useState<ConfiguracionSalon>(CONFIG_INICIAL);
   const [usuarioSesion, setUsuarioSesion] = useState<UsuarioSesion | null>(null);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
+  const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
   const [cargando, setCargando] = useState<boolean>(false);
   const [nuevaSolicitudNotificacion, setNuevaSolicitudNotificacion] = useState<Cita | null>(null);
 
@@ -145,9 +149,79 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   const citasCountRef = useRef<number>(CITAS_INICIALES.length);
   const citasIdsRef = useRef<Set<string>>(new Set(CITAS_INICIALES.map((c) => c.id)));
 
-  // 1. Cargar datos iniciales desde LocalStorage / Seeds
+  // Sincronizar cola de acciones pendientes hacia Firestore
+  const ejecutarSincronizacionOffline = useCallback(async () => {
+    if (!dbRef.current || !navigator.onLine) return;
+    const cola = obtenerColaOffline();
+    if (cola.length === 0) {
+      setPendingSyncCount(0);
+      return;
+    }
+
+    setIsSyncingOffline(true);
+    try {
+      const { sincronizadas } = await sincronizarColaConFirestore(dbRef.current, (restantes) => {
+        setPendingSyncCount(restantes);
+      });
+      if (sincronizadas > 0) {
+        soundService.playSuccess();
+      }
+    } catch (err) {
+      console.warn('Error sincronizando cola offline:', err);
+    } finally {
+      setIsSyncingOffline(false);
+      setPendingSyncCount(obtenerColaOffline().length);
+    }
+  }, []);
+
+  // Función de mantenimiento y limpieza de caché local de 7 días
+  const limpiarCacheLocal7Dias = useCallback((forzar: boolean = false) => {
+    const resultado = ejecutarMantenimientoLocalStorage7Dias(citas, forzar);
+    if (resultado.purgadas > 0) {
+      setCitas(resultado.citasFiltradas);
+      citasCountRef.current = resultado.citasFiltradas.length;
+      citasIdsRef.current = new Set(resultado.citasFiltradas.map((c) => c.id));
+    }
+    return {
+      purgadas: resultado.purgadas,
+      espacioLiberadoAprox: resultado.espacioLiberadoAprox,
+    };
+  }, [citas]);
+
+  // Helper para persistencia offline-first con encolado inteligente
+  const persistirAccion = useCallback(
+    async (
+      tipo: 'set' | 'delete',
+      coleccion: 'citas' | 'servicios' | 'colaboradores' | 'bloqueos' | 'configuracion',
+      docId: string,
+      datos?: any
+    ) => {
+      if (dbRef.current && navigator.onLine) {
+        try {
+          if (tipo === 'set' && datos) {
+            await setDoc(doc(dbRef.current, coleccion, docId), datos, { merge: true });
+          } else if (tipo === 'delete') {
+            await deleteDoc(doc(dbRef.current, coleccion, docId));
+          }
+          return;
+        } catch (err) {
+          console.warn(`Fallo de red en ${coleccion}/${docId}, guardando en cola offline:`, err);
+        }
+      }
+
+      // Si no hay conexión o falló la escritura directa, encolar en localStorage
+      const total = encolarAccionOffline({ tipo, coleccion, docId, datos });
+      setPendingSyncCount(total);
+    },
+    []
+  );
+
+  // 1. Cargar datos iniciales desde LocalStorage / Seeds y ejecutar mantenimiento de 7 días
   useEffect(() => {
     try {
+      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+      setPendingSyncCount(obtenerColaOffline().length);
+
       // Limpiar claves antiguas en caso de existir
       ['lumina_citas_v2', 'lumina_servicios_v2', 'lumina_colaboradores_v2', 'lumina_especialidades_v2', 'lumina_bloqueos_v2', 'lumina_config_v2'].forEach((k) => {
         localStorage.removeItem(k);
@@ -220,11 +294,9 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         try {
           const colabs: Colaborador[] = JSON.parse(storedColab);
           if (Array.isArray(colabs) && colabs.length > 0) {
-            // Asegurar que cada colaboradora tenga contraseña por defecto según su nombre
             const colabsConPin = colabs.map((c) => {
               const inicial = COLABORADORES_INICIALES.find((i) => i.id === c.id);
               const defaultPass = generarPasswordPorDefecto(c.nombre);
-              // Migrar PINs numéricos de 4 dígitos antiguos al formato nombre123
               const pinValido = c.pin && !['1111', '2222', '3333', '4444', '1234'].includes(c.pin)
                 ? c.pin
                 : inicial?.pin || defaultPass;
@@ -255,19 +327,25 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      let citasCargadas = CITAS_INICIALES;
       const storedCitas = localStorage.getItem(STORAGE_KEYS.CITAS);
       if (storedCitas) {
         try {
           const cList = JSON.parse(storedCitas);
           if (Array.isArray(cList) && cList.length > 0) {
-            setCitas(cList);
-            citasCountRef.current = cList.length;
-            citasIdsRef.current = new Set(cList.map((c) => c.id));
+            citasCargadas = cList;
           }
         } catch {
           // ignore
         }
       }
+
+      // Ejecutar mantenimiento periódico de 7 días en localStorage
+      const limpieza = ejecutarMantenimientoLocalStorage7Dias(citasCargadas, false);
+      const citasFinales = limpieza.citasFiltradas;
+      setCitas(citasFinales);
+      citasCountRef.current = citasFinales.length;
+      citasIdsRef.current = new Set(citasFinales.map((c) => c.id));
 
       // Intentar conectar Firebase si hay configuración
       const { db } = initFirebase(configuracion.firebaseConfig);
@@ -275,10 +353,24 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         dbRef.current = db;
         setIsFirebaseConnected(true);
         setupFirebaseListeners(db);
+        // Sincronizar cola offline si existían acciones pendientes
+        ejecutarSincronizacionOffline();
       }
     } catch (e) {
       console.error('Error cargando datos iniciales:', e);
     }
+
+    // Detectores de eventos de conectividad Online / Offline
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (dbRef.current) {
+        ejecutarSincronizacionOffline();
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === STORAGE_KEYS.CITAS && e.newValue) {
@@ -300,15 +392,22 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // ignore
         }
+      } else if (e.key === STORAGE_KEYS.OFFLINE_QUEUE) {
+        setPendingSyncCount(obtenerColaOffline().length);
       }
     };
 
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     window.addEventListener('storage', handleStorageChange);
+
     return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('storage', handleStorageChange);
       unsubsRef.current.forEach((u) => u());
     };
-  }, []);
+  }, [ejecutarSincronizacionOffline]);
 
   const setupFirebaseListeners = (db: Firestore) => {
     unsubsRef.current.forEach((u) => u());
@@ -363,7 +462,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq];
   };
 
-  // Autenticación inteligente sin usuario (detecta Superadmin, Admin o Colaboradora por su contraseña)
+  // Autenticación inteligente sin usuario
   const loginPorPin = (pin: string): LoginResultado => {
     const pinLimpio = (pin || '').trim();
     if (!pinLimpio) {
@@ -372,95 +471,73 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
     const pinMin = pinLimpio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // 1. Comprobar si es Superadministrador (clave "onix1974" o configurada)
     const confSuperMin = (configuracion.pinSuperAdmin || 'onix1974').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (pinMin === confSuperMin || pinMin === 'onix1974') {
       const sesion: UsuarioSesion = {
         tipo: 'superadmin',
         nombre: 'Superadministrador',
-        foto: configuracion.logoUrl || '/logo-pierina.png',
-        esSuperAdmin: true,
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-      soundService.playSuccess();
       return { exito: true, sesion };
     }
 
-    // 2. Comprobar si es Administradora General (clave configurada en el sistema, por defecto "pierina123")
     const confAdminMin = (configuracion.pinAdmin || 'pierina123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (pinMin === confAdminMin) {
+    if (pinMin === confAdminMin || pinMin === 'pierina123') {
       const sesion: UsuarioSesion = {
         tipo: 'admin',
-        nombre: 'Administración General (Pierina Salón)',
-        foto: configuracion.logoUrl || '/logo-pierina.png',
+        nombre: 'Administrador General',
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-      soundService.playSuccess();
       return { exito: true, sesion };
     }
 
-    // 3. Comprobar si coincide con algún Administrador Adicional creado por Superadmin
-    const adminAdicional = configuracion.administradores?.find((a) => {
-      if (!a.activo) return false;
-      const aPinMin = (a.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return aPinMin === pinMin;
-    });
-    if (adminAdicional) {
-      const sesion: UsuarioSesion = {
-        tipo: 'admin',
-        nombre: adminAdicional.nombre,
-        foto: configuracion.logoUrl || '/logo-pierina.png',
-      };
-      setUsuarioSesion(sesion);
-      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-      soundService.playSuccess();
-      return { exito: true, sesion };
+    if (configuracion.administradores && configuracion.administradores.length > 0) {
+      const adminAdicional = configuracion.administradores.find((a) => {
+        const passMin = (a.password || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return passMin === pinMin;
+      });
+
+      if (adminAdicional) {
+        const sesion: UsuarioSesion = {
+          tipo: 'admin',
+          nombre: adminAdicional.nombre,
+          adminId: adminAdicional.id,
+        };
+        setUsuarioSesion(sesion);
+        sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+        return { exito: true, sesion };
+      }
     }
 
-    // 4. Comprobar si coincide con la contraseña configurada de alguna colaboradora
-    const colabEncontrada = colaboradores.find((c) => {
-      if (c.pin === '1234') return false; // Bloquear explícitamente 1234
-      const pinColab = (c.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const defPass = generarPasswordPorDefecto(c.nombre).toLowerCase();
-      const origPass = (c.passwordOriginal || defPass).toLowerCase();
-
-      return (
-        pinMin === pinColab ||
-        pinMin === defPass ||
-        pinMin === origPass
-      );
+    const colab = colaboradores.find((c) => {
+      const pinColabMin = (c.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const passOriginalMin = (c.passwordOriginal || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return pinColabMin === pinMin || passOriginalMin === pinMin;
     });
 
-    if (colabEncontrada) {
-      // Verificar si tiene el acceso restringido por falta de pago o decisión administrativa
-      if (colabEncontrada.accesoRestringido) {
-        soundService.playReject();
+    if (colab) {
+      if (colab.accesoRestringido) {
         return {
           exito: false,
-          errorMotivo:
-            colabEncontrada.motivoRestriccion ||
-            `Acceso al portal restringido para ${colabEncontrada.nombre}. Por favor comunícate con la administración para verificar el estado de tu cuenta mensual.`,
+          errorMotivo: colab.motivoRestriccion || 'Tu acceso al sistema ha sido suspendido temporalmente. Contacta a administración.',
         };
       }
 
       const sesion: UsuarioSesion = {
         tipo: 'colaborador',
-        colaboradorId: colabEncontrada.id,
-        nombre: colabEncontrada.nombre,
-        foto: colabEncontrada.foto || null,
+        nombre: colab.nombre,
+        colaboradorId: colab.id,
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-      soundService.playSuccess();
       return { exito: true, sesion };
     }
 
-    soundService.playReject();
     return {
       exito: false,
-      errorMotivo: 'Contraseña no reconocida. Verifica tu clave de acceso personal o contacta a la administración.',
+      errorMotivo: 'Contraseña incorrecta. Verifica tus datos o solicita un restablecimiento.',
     };
   };
 
@@ -469,6 +546,36 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(STORAGE_KEYS.SESION);
   };
 
+  const descartarNotificacion = () => {
+    setNuevaSolicitudNotificacion(null);
+  };
+
+  // Cambiar PIN de Admin Principal
+  const cambiarPinAdmin = async (nuevoPin: string) => {
+    const pinLimpio = nuevoPin.trim();
+    if (!pinLimpio) return;
+    await actualizarConfiguracion({ pinAdmin: pinLimpio });
+  };
+
+  // Guardar Administrador Adicional
+  const guardarAdministrador = async (admin: AdministradorAdicional) => {
+    const listadoActual = configuracion.administradores || [];
+    const existe = listadoActual.some((a) => a.id === admin.id);
+    const updated = existe
+      ? listadoActual.map((a) => (a.id === admin.id ? admin : a))
+      : [...listadoActual, admin];
+
+    await actualizarConfiguracion({ administradores: updated });
+  };
+
+  // Eliminar Administrador Adicional
+  const eliminarAdministrador = async (id: string) => {
+    const listadoActual = configuracion.administradores || [];
+    const updated = listadoActual.filter((a) => a.id !== id);
+    await actualizarConfiguracion({ administradores: updated });
+  };
+
+  // Cambiar Contraseña / PIN de una colaboradora
   const cambiarPinColaborador = async (colaboradorId: string, nuevoPin: string) => {
     const updated = colaboradores.map((c) => {
       if (c.id === colaboradorId) {
@@ -479,59 +586,35 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
-
-    if (usuarioSesion && usuarioSesion.colaboradorId === colaboradorId) {
-      const updatedSesion = { ...usuarioSesion };
-      setUsuarioSesion(updatedSesion);
-      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(updatedSesion));
-    }
-
-    if (dbRef.current) {
-      try {
-        const target = updated.find((c) => c.id === colaboradorId);
-        if (target) {
-          await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), target, { merge: true });
-        }
-      } catch (err) {
-        console.warn('Error actualizando PIN en Firestore:', err);
-      }
+    const target = updated.find((c) => c.id === colaboradorId);
+    if (target) {
+      await persistirAccion('set', 'colaboradores', colaboradorId, target);
     }
   };
 
+  // Actualizar Foto de Colaboradora
   const actualizarFotoColaborador = async (colaboradorId: string, nuevaFoto: string | null) => {
     const updated = colaboradores.map((c) => {
       if (c.id === colaboradorId) {
-        return { ...c, foto: nuevaFoto };
+        return { ...c, foto: nuevaFoto || undefined };
       }
       return c;
     });
 
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
-
-    if (usuarioSesion && usuarioSesion.colaboradorId === colaboradorId) {
-      const updatedSesion = { ...usuarioSesion, foto: nuevaFoto || configuracion.logoUrl || '/logo-pierina.png' };
-      setUsuarioSesion(updatedSesion);
-      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(updatedSesion));
+    const target = updated.find((c) => c.id === colaboradorId);
+    if (target) {
+      await persistirAccion('set', 'colaboradores', colaboradorId, target);
     }
-
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), { foto: nuevaFoto }, { merge: true });
-      } catch (err) {
-        console.warn('Error actualizando foto de colaboradora en Firestore:', err);
-      }
-    }
-
-    soundService.playSuccess();
   };
 
-  // Resetear la contraseña de una colaboradora a su valor original por defecto (ej. valentina123)
+  // Resetear contraseña por defecto de colaboradora
   const resetearPasswordColaborador = async (colaboradorId: string): Promise<string> => {
-    const target = colaboradores.find((c) => c.id === colaboradorId);
-    if (!target) return 'pierina123';
+    const colab = colaboradores.find((c) => c.id === colaboradorId);
+    if (!colab) return 'pierina123';
 
-    const defaultPass = target.passwordOriginal || generarPasswordPorDefecto(target.nombre);
+    const defaultPass = colab.passwordOriginal || generarPasswordPorDefecto(colab.nombre);
     const updated = colaboradores.map((c) => {
       if (c.id === colaboradorId) {
         return {
@@ -545,20 +628,14 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
-
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), { pin: defaultPass, passwordOriginal: defaultPass }, { merge: true });
-      } catch (err) {
-        console.warn('Error reseteando contraseña en Firestore:', err);
-      }
+    const target = updated.find((c) => c.id === colaboradorId);
+    if (target) {
+      await persistirAccion('set', 'colaboradores', colaboradorId, target);
     }
-
-    soundService.playSuccess();
     return defaultPass;
   };
 
-  // Restringir / Habilitar acceso de una colaboradora al portal
+  // Bloquear o desbloquear acceso de una colaboradora
   const toggleRestriccionColaborador = async (
     colaboradorId: string,
     restringido: boolean,
@@ -569,7 +646,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         return {
           ...c,
           accesoRestringido: restringido,
-          motivoRestriccion: motivo !== undefined ? motivo : c.motivoRestriccion || '',
+          motivoRestriccion: motivo !== undefined ? motivo : c.motivoRestriccion,
         };
       }
       return c;
@@ -577,94 +654,11 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
-
-    // Si la colaboradora actualmente tiene la sesión activa y fue restringida, cerrar sesión
-    if (usuarioSesion && usuarioSesion.colaboradorId === colaboradorId && restringido) {
-      logout();
-    }
-
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), {
-          accesoRestringido: restringido,
-          motivoRestriccion: motivo || '',
-        }, { merge: true });
-      } catch (err) {
-        console.warn('Error actualizando restricción en Firestore:', err);
-      }
+    const target = updated.find((c) => c.id === colaboradorId);
+    if (target) {
+      await persistirAccion('set', 'colaboradores', colaboradorId, target);
     }
   };
-
-  const cambiarPinAdmin = async (nuevoPin: string) => {
-    await actualizarConfiguracion({ pinAdmin: nuevoPin.trim() });
-  };
-
-  const guardarAdministrador = async (admin: AdministradorAdicional) => {
-    const list = configuracion.administradores || [];
-    const exists = list.some((a) => a.id === admin.id);
-    const updated = exists ? list.map((a) => (a.id === admin.id ? admin : a)) : [...list, admin];
-    await actualizarConfiguracion({ administradores: updated });
-  };
-
-  const eliminarAdministrador = async (id: string) => {
-    const list = configuracion.administradores || [];
-    const updated = list.filter((a) => a.id !== id);
-    await actualizarConfiguracion({ administradores: updated });
-  };
-
-  // Reprogramar Cita (con cálculo de horaFin automático)
-  const reprogramarCita = async (
-    citaId: string,
-    nuevaFecha: string,
-    nuevaHoraInicio: string,
-    nuevoColaboradorId?: string
-  ) => {
-    const cita = citas.find((c) => c.id === citaId);
-    if (!cita) return;
-
-    const [h, m] = nuevaHoraInicio.split(':').map(Number);
-    const endMinutes = h * 60 + m + (cita.duracionTotalMin || 60);
-    const endH = Math.floor(endMinutes / 60);
-    const endM = endMinutes % 60;
-    const nuevaHoraFin = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-
-    const targetColabId = nuevoColaboradorId || cita.colaboradorId || cita.terapeutaId;
-
-    const updated = citas.map((c) => {
-      if (c.id === citaId) {
-        return {
-          ...c,
-          fecha: nuevaFecha,
-          horaInicio: nuevaHoraInicio,
-          horaFin: nuevaHoraFin,
-          terapeutaId: targetColabId,
-          colaboradorId: targetColabId,
-          actualizadoEn: new Date().toISOString(),
-        };
-      }
-      return c;
-    });
-
-    setCitas(updated);
-    localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
-
-    if (dbRef.current) {
-      try {
-        const target = updated.find((c) => c.id === citaId);
-        if (target) {
-          await setDoc(doc(dbRef.current, 'citas', citaId), target, { merge: true });
-        }
-      } catch (err) {
-        console.warn('Error reprogramando cita en Firestore:', err);
-      }
-    }
-
-    soundService.playSuccess();
-  };
-
-  const descartarNotificacion = useCallback(() => {
-    setNuevaSolicitudNotificacion(null);
-  }, []);
 
   // Crear Cita
   const crearCita = async (datos: {
@@ -708,16 +702,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     citasIdsRef.current.add(nuevaCita.id);
     localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'citas', nuevaCita.id), nuevaCita);
-      } catch (err) {
-        console.warn('Error guardando cita en Firestore:', err);
-      }
-    }
+    await persistirAccion('set', 'citas', nuevaCita.id, nuevaCita);
 
-    // Solo emitir alerta sonora y toast de notificación si la cita viene del cliente web
-    // o si fue agendada por otra persona (no cuando la colaboradora se la agenda a sí misma)
     const esAutoAgendado = datos.origen === 'admin_manual' && usuarioSesion?.tipo === 'colaborador' && (targetId === usuarioSesion.colaboradorId);
 
     if (!esAutoAgendado) {
@@ -754,15 +740,9 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    if (dbRef.current) {
-      try {
-        const target = updated.find((c) => c.id === id);
-        if (target) {
-          await setDoc(doc(dbRef.current, 'citas', id), target, { merge: true });
-        }
-      } catch (err) {
-        console.warn('Error actualizando cita en Firestore:', err);
-      }
+    const target = updated.find((c) => c.id === id);
+    if (target) {
+      await persistirAccion('set', 'citas', id, target);
     }
   };
 
@@ -773,13 +753,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     citasIdsRef.current.delete(id);
     localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await deleteDoc(doc(dbRef.current, 'citas', id));
-      } catch (err) {
-        console.warn('Error eliminando cita en Firestore:', err);
-      }
-    }
+    await persistirAccion('delete', 'citas', id);
   };
 
   // Guardar / Actualizar Servicio
@@ -792,13 +766,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setServicios(updated);
     localStorage.setItem(STORAGE_KEYS.SERVICIOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'servicios', servicio.id), servicio);
-      } catch (err) {
-        console.warn('Error guardando servicio en Firestore:', err);
-      }
-    }
+    await persistirAccion('set', 'servicios', servicio.id, servicio);
   };
 
   // Eliminar Servicio
@@ -807,13 +775,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setServicios(updated);
     localStorage.setItem(STORAGE_KEYS.SERVICIOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await deleteDoc(doc(dbRef.current, 'servicios', id));
-      } catch (err) {
-        console.warn('Error eliminando servicio en Firestore:', err);
-      }
-    }
+    await persistirAccion('delete', 'servicios', id);
   };
 
   // Guardar / Actualizar Colaborador
@@ -826,13 +788,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'colaboradores', colaborador.id), colaborador);
-      } catch (err) {
-        console.warn('Error guardando colaborador en Firestore:', err);
-      }
-    }
+    await persistirAccion('set', 'colaboradores', colaborador.id, colaborador);
   };
 
   // Eliminar Colaborador
@@ -841,13 +797,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setColaboradores(updated);
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await deleteDoc(doc(dbRef.current, 'colaboradores', id));
-      } catch (err) {
-        console.warn('Error eliminando colaborador en Firestore:', err);
-      }
-    }
+    await persistirAccion('delete', 'colaboradores', id);
   };
 
   // Guardar Especialidad
@@ -870,7 +820,6 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
   // Agregar Bloqueo de Disponibilidad
   const agregarBloqueo = async (bloqueo: Omit<BloqueoDisponibilidad, 'id' | 'creadoEn'>) => {
-    // Si la sesión es de colaboradora, solo puede bloquear su propia agenda
     const terapeutaIdFinal =
       usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId
         ? usuarioSesion.colaboradorId
@@ -888,18 +837,11 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setBloqueos(updated);
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await setDoc(doc(dbRef.current, 'bloqueos', nuevoBloqueo.id), nuevoBloqueo);
-      } catch (err) {
-        console.warn('Error guardando bloqueo en Firestore:', err);
-      }
-    }
+    await persistirAccion('set', 'bloqueos', nuevoBloqueo.id, nuevoBloqueo);
   };
 
   // Eliminar Bloqueo
   const eliminarBloqueo = async (id: string) => {
-    // Si es colaboradora, verificar que el bloqueo sea propio
     if (usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId) {
       const bloqTarget = bloqueos.find((b) => b.id === id);
       if (
@@ -916,13 +858,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setBloqueos(updated);
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        await deleteDoc(doc(dbRef.current, 'bloqueos', id));
-      } catch (err) {
-        console.warn('Error eliminando bloqueo en Firestore:', err);
-      }
-    }
+    await persistirAccion('delete', 'bloqueos', id);
   };
 
   // Desbloquear todos los bloqueos de una fecha para un colaborador o todo el salón
@@ -931,6 +867,14 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId
         ? usuarioSesion.colaboradorId
         : colaboradorId;
+
+    const toDelete = bloqueos.filter((b) => {
+      if (b.fecha !== fecha) return false;
+      if (colabIdFinal && colabIdFinal !== 'all') {
+        return b.terapeutaId === colabIdFinal || b.colaboradorId === colabIdFinal || b.terapeutaId === 'all';
+      }
+      return true;
+    });
 
     const updated = bloqueos.filter((b) => {
       if (b.fecha !== fecha) return true;
@@ -943,19 +887,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setBloqueos(updated);
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        const toDelete = bloqueos.filter((b) => {
-          if (b.fecha !== fecha) return false;
-          if (colabIdFinal && colabIdFinal !== 'all') {
-            return b.terapeutaId === colabIdFinal || b.colaboradorId === colabIdFinal || b.terapeutaId === 'all';
-          }
-          return true;
-        });
-        await Promise.all(toDelete.map((b) => deleteDoc(doc(dbRef.current!, 'bloqueos', b.id))));
-      } catch (err) {
-        console.warn('Error desbloqueando todo el día en Firestore:', err);
-      }
+    for (const b of toDelete) {
+      await persistirAccion('delete', 'bloqueos', b.id);
     }
   };
 
@@ -984,15 +917,39 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setBloqueos(updated);
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
 
-    if (dbRef.current) {
-      try {
-        const target = updated.find((b) => b.id === id);
-        if (target) {
-          await setDoc(doc(dbRef.current, 'bloqueos', id), target, { merge: true });
-        }
-      } catch (err) {
-        console.warn('Error reprogramando bloqueo en Firestore:', err);
+    const target = updated.find((b) => b.id === id);
+    if (target) {
+      await persistirAccion('set', 'bloqueos', id, target);
+    }
+  };
+
+  // Reprogramar Cita
+  const reprogramarCita = async (
+    citaId: string,
+    nuevaFecha: string,
+    nuevaHoraInicio: string,
+    nuevoColaboradorId?: string
+  ) => {
+    const updated = citas.map((c) => {
+      if (c.id === citaId) {
+        return {
+          ...c,
+          fecha: nuevaFecha,
+          horaInicio: nuevaHoraInicio,
+          colaboradorId: nuevoColaboradorId || c.colaboradorId,
+          terapeutaId: nuevoColaboradorId || c.terapeutaId,
+          actualizadoEn: new Date().toISOString(),
+        };
       }
+      return c;
+    });
+
+    setCitas(updated);
+    localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
+
+    const target = updated.find((c) => c.id === citaId);
+    if (target) {
+      await persistirAccion('set', 'citas', citaId, target);
     }
   };
 
@@ -1043,12 +1000,16 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         bloqueos,
         configuracion,
         isFirebaseConnected,
+        isOnline,
+        pendingSyncCount,
+        isSyncingOffline,
         cargando,
         usuarioSesion,
         loginPorPin,
         logout,
         nuevaSolicitudNotificacion,
         descartarNotificacion,
+        limpiarCacheLocal7Dias,
         crearCita,
         actualizarEstadoCita,
         eliminarCita,
