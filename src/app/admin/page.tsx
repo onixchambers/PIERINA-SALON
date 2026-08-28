@@ -34,6 +34,7 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
+import { detectarPaisUsuario } from '@/lib/countryDetection';
 import { soundService } from '@/lib/sound';
 import { processImageFile } from '@/lib/imageHelper';
 
@@ -155,7 +156,7 @@ export default function AdminPage() {
 
     await crearCita({
       clienteNombre: manualNombre.trim(),
-      clienteTelefono: manualTelefono.trim() || '+52 55 0000 0000',
+      clienteTelefono: manualTelefono.trim() || `${detectarPaisUsuario().dial} 0000 0000`,
       clienteNotas: manualNotas.trim() || 'Cita manual registrada en recepción',
       terapeutaId: targetColab,
       colaboradorId: targetColab,

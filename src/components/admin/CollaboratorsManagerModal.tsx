@@ -65,7 +65,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formNombre, setFormNombre] = useState<string>('');
   const [formFoto, setFormFoto] = useState<string | null>(null);
-  const [formTelefono, setFormTelefono] = useState<string>('+52 55 ');
+  const [formTelefono, setFormTelefono] = useState<string>('');
   const [formBiografia, setFormBiografia] = useState<string>('');
   const [formEspecialidades, setFormEspecialidades] = useState<string[]>([]);
   const [formServiciosAsignados, setFormServiciosAsignados] = useState<{ [servicioId: string]: { activo: boolean; precio: number } }>({});
@@ -129,7 +129,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     setEditandoId(null);
     setFormNombre('');
     setFormFoto(null);
-    setFormTelefono('+52 55 ');
+    setFormTelefono('');
     setFormBiografia('');
     setFormEspecialidades([]);
     setFormAccesoRestringido(false);

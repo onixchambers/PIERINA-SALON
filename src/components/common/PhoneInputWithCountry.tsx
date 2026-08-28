@@ -53,7 +53,10 @@ export default function PhoneInputWithCountry({
       const { pais, numeroLocal: local } = separarTelefonoYPais(value);
       setPaisSeleccionado(pais);
       setNumeroLocal(local);
-    } else if (value !== undefined && !value.startsWith('+')) {
+    } else if (value === '' || value === undefined) {
+      setNumeroLocal('');
+      setPaisSeleccionado(detectarPaisUsuario());
+    } else if (!value.startsWith('+')) {
       setNumeroLocal(value);
     }
   }, [value]);
