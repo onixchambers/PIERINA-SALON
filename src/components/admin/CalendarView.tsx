@@ -798,8 +798,8 @@ export default function CalendarView({
           VISTA 2: SEMANA (7 Días)
          ========================================================================= */}
       {vista === 'semana' && (
-        <div className="rounded-3xl border border-[#E6D7CB] bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-7 gap-2">
+        <div className="rounded-2xl sm:rounded-3xl border border-[#E6D7CB] bg-white p-1.5 sm:p-4 shadow-sm">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {diasSemana.map((d) => {
               const citasSemanaDia = citasFiltradas.filter((c) => c.fecha === d.fecha);
               const esSeleccionado = d.fecha === fechaActual;
@@ -808,21 +808,21 @@ export default function CalendarView({
                 <div
                   key={d.fecha}
                   onClick={() => onSelectFecha(d.fecha)}
-                  className={`rounded-2xl p-3 border transition cursor-pointer flex flex-col min-h-[300px] ${
+                  className={`rounded-xl sm:rounded-2xl p-1 sm:p-3 border transition cursor-pointer flex flex-col min-h-[160px] sm:min-h-[300px] ${
                     esSeleccionado
                       ? 'border-[#B85D75] bg-[#FFF9F7] shadow-xs'
                       : 'border-[#EAE0D5] bg-white hover:border-[#D6C2B4]'
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-[#F4EDE4] pb-2">
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#8C7A70] block">
+                  <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#F4EDE4] pb-1 sm:pb-2">
+                    <div className="text-center sm:text-left">
+                      <span className="text-[9px] sm:text-[11px] font-semibold text-[#8C7A70] block leading-none">
                         {d.label}
                       </span>
-                      <span className="text-base font-bold text-[#2D2424]">{d.numero}</span>
+                      <span className="text-xs sm:text-base font-bold text-[#2D2424]">{d.numero}</span>
                     </div>
                     {d.esHoy && (
-                      <span className="rounded-full bg-[#B85D75] px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      <span className="rounded-full bg-[#B85D75] px-1 sm:px-1.5 py-0.5 text-[7px] sm:text-[9px] font-bold text-white mt-0.5 sm:mt-0">
                         Hoy
                       </span>
                     )}
@@ -883,34 +883,54 @@ export default function CalendarView({
                           : 'bg-[#B85D75] text-white';
 
                       return (
-                        <div
-                          key={cita.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectCita(cita);
-                          }}
-                          className={`rounded-xl p-2 text-[10px] border shadow-2xs cursor-pointer transition hover:scale-[1.02] hover:shadow-xs ${estilo.card}`}
-                          title={`${cita.clienteNombre} (${cita.estado}) - ${cita.horaInicio} con ${colab?.nombre || 'Colaboradora'}`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {/* Circulito pequeño con la inicial del cliente y el color del estado */}
+                        <React.Fragment key={cita.id}>
+                          {/* 📱 VISTA EN CELULARES: Circulito pequeño con inicial y color de estado */}
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectCita(cita);
+                            }}
+                            className="sm:hidden flex flex-col items-center justify-center my-1 cursor-pointer active:scale-90 transition group"
+                            title={`${cita.clienteNombre} (${cita.estado}) • ${cita.horaInicio}`}
+                          >
                             <div
-                              className={`h-5 w-5 min-w-[20px] rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${colorCirculo}`}
+                              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${colorCirculo}`}
                             >
                               {inicial}
                             </div>
-                            <div className="font-bold text-[11px] truncate flex-1 leading-tight text-[#2D2424]">
-                              {cita.clienteNombre}
-                            </div>
-                          </div>
-
-                          <div className="mt-1 flex items-center justify-between text-[10px] opacity-85 pl-6.5">
-                            <span className="font-medium text-[#4A3E39]">{cita.horaInicio}</span>
-                            <span className="truncate text-[9px] font-semibold text-[#8C7A70]">
-                              {colab?.nombre.split(' ')[0]}
+                            <span className="text-[8px] font-bold text-[#5A4D48] mt-0.5 leading-none">
+                              {cita.horaInicio}
                             </span>
                           </div>
-                        </div>
+
+                          {/* 💻 VISTA EN PC / LAPTOP: Tarjeta completa con circulito, nombre y horario */}
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectCita(cita);
+                            }}
+                            className={`hidden sm:block rounded-xl p-2 text-[10px] border shadow-2xs cursor-pointer transition hover:scale-[1.02] hover:shadow-xs ${estilo.card}`}
+                            title={`${cita.clienteNombre} (${cita.estado}) - ${cita.horaInicio} con ${colab?.nombre || 'Colaboradora'}`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div
+                                className={`h-5 w-5 min-w-[20px] rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${colorCirculo}`}
+                              >
+                                {inicial}
+                              </div>
+                              <div className="font-bold text-[11px] truncate flex-1 leading-tight text-[#2D2424]">
+                                {cita.clienteNombre}
+                              </div>
+                            </div>
+
+                            <div className="mt-1 flex items-center justify-between text-[10px] opacity-85 pl-6.5">
+                              <span className="font-medium text-[#4A3E39]">{cita.horaInicio}</span>
+                              <span className="truncate text-[9px] font-semibold text-[#8C7A70]">
+                                {colab?.nombre.split(' ')[0]}
+                              </span>
+                            </div>
+                          </div>
+                        </React.Fragment>
                       );
                     })}
 
