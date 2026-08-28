@@ -63,12 +63,10 @@ export default function BookingWizard() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [slotSeleccionado, setSlotSeleccionado] = useState<SlotDisponible | null>(null);
 
-  // Formulario de datos express + Foto de referencia opcional
+  // Formulario de datos express
   const [clienteNombre, setClienteNombre] = useState<string>('');
   const [clienteTelefono, setClienteTelefono] = useState<string>('');
   const [clienteNotas, setClienteNotas] = useState<string>('');
-  const [fotoReferencia, setFotoReferencia] = useState<string | null>(null);
-  const [cargandoFotoRef, setCargandoFotoRef] = useState<boolean>(false);
   const [enviando, setEnviando] = useState<boolean>(false);
   const [errorFormulario, setErrorFormulario] = useState<string>('');
 
@@ -223,20 +221,6 @@ export default function BookingWizard() {
     setSlotSeleccionado(null);
   };
 
-  const handleSubirFotoReferencia = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCargandoFotoRef(true);
-    try {
-      const dataUrl = await processImageFile(file, 600, 0.85);
-      setFotoReferencia(dataUrl);
-    } catch (err) {
-      console.error('Error procesando foto de referencia:', err);
-    } finally {
-      setCargandoFotoRef(false);
-    }
-  };
-
   const handleConfirmarReserva = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorFormulario('');
@@ -268,7 +252,7 @@ export default function BookingWizard() {
         clienteNombre,
         clienteTelefono,
         clienteNotas,
-        fotoReferencia: fotoReferencia || null,
+        fotoReferencia: null,
         terapeutaId: targetColabId,
         colaboradorId: targetColabId,
         servicioIds: serviciosSeleccionados.map((s) => s.id),
@@ -718,7 +702,7 @@ export default function BookingWizard() {
                 {slotsManana.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-[#8C7A70] uppercase tracking-wider mb-2">
-                      ☀️ Mañana (09:00 a 14:00)
+                      ☀️ Mañana (08:00 a 14:00)
                     </h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {slotsManana.map((slot) => {
@@ -744,7 +728,7 @@ export default function BookingWizard() {
                 {slotsTarde.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-[#8C7A70] uppercase tracking-wider mb-2">
-                      🌙 Tarde (14:00 a 20:00)
+                      🌙 Tarde & Noche (14:00 a 23:00)
                     </h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {slotsTarde.map((slot) => {
@@ -843,52 +827,9 @@ export default function BookingWizard() {
                   </div>
                 </div>
 
-                {/* SUBIDA DE FOTO DE REFERENCIA (OPCIONAL) */}
-                <div className="rounded-2xl bg-[#FAF6F0] p-3.5 border border-[#EFE7DE]">
-                  <label className="block text-xs font-bold text-[#3D322E] uppercase tracking-wider mb-1.5">
-                    📸 Foto de referencia de diseño / estilo (Opcional):
-                  </label>
-                  <div className="flex items-center gap-3">
-                    {fotoReferencia ? (
-                      <div className="relative">
-                        <img
-                          src={fotoReferencia}
-                          alt="Foto referencia"
-                          className="h-16 w-16 rounded-xl object-cover border border-[#B85D75] shadow-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFotoReferencia(null)}
-                          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white hover:bg-rose-700"
-                          title="Eliminar foto"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex items-center gap-2 rounded-xl bg-white border border-[#E6D7CB] px-3.5 py-2 text-xs font-semibold text-[#5A4D48] hover:bg-[#F4EDE4] cursor-pointer transition shadow-2xs">
-                        <Upload className="h-4 w-4 text-[#B85D75]" />
-                        {cargandoFotoRef ? 'Cargando...' : 'Adjuntar Foto (Diseño de uñas, corte...)'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleSubirFotoReferencia}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-
-                    {fotoReferencia && (
-                      <span className="text-xs font-semibold text-emerald-700">
-                        ✓ Foto adjuntada con éxito
-                      </span>
-                    )}
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-bold text-[#3D322E] uppercase tracking-wider mb-1.5">
-                    Comentarios o especificaciones
+                    Comentarios o especificaciones (Opcional)
                   </label>
                   <textarea
                     rows={2}

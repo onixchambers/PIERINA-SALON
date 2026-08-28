@@ -37,21 +37,34 @@ export interface Colaborador {
   id: string;
   nombre: string;
   foto?: string | null; // DataURL de la foto real o null para avatar de iniciales
-  pin?: string; // PIN personal de acceso (ej. "1111", "2222")
+  pin?: string; // Contraseña personal de acceso (ej. "valentina123")
+  passwordOriginal?: string; // Contraseña por defecto para reseteo
   especialidades: string[]; // IDs de especialidades asignadas
   serviciosAsignados?: ServicioColaborador[]; // Tratamientos y precios configurados específicamente para esta colaboradora
   telefono: string;
   horarioBase: HorarioBase;
   color: string; // Color distintivo para el calendario
   activo: boolean;
+  accesoRestringido?: boolean; // Bloqueo de acceso al portal por falta de pago o decisión administrativa
+  motivoRestriccion?: string; // Motivo mostrado al intentar ingresar
+  rol?: 'admin' | 'colaborador';
   biografia?: string;
 }
 
+export interface AdministradorAdicional {
+  id: string;
+  nombre: string;
+  pin: string;
+  activo: boolean;
+  creadoEn: string;
+}
+
 export interface UsuarioSesion {
-  tipo: 'admin' | 'colaborador';
+  tipo: 'superadmin' | 'admin' | 'colaborador';
   colaboradorId?: string;
   nombre: string;
   foto?: string | null;
+  esSuperAdmin?: boolean;
 }
 
 // Alias de retrocompatibilidad
@@ -104,8 +117,11 @@ export interface ConfiguracionSalon {
   horarioCierre: string;
   intervaloMinutos: number;
   pinAdmin: string;
+  pinSuperAdmin?: string; // Contraseña de superadministrador (por defecto "onix1974")
+  administradores?: AdministradorAdicional[]; // Administradores creados por el superusuario
   alertaSonoraActiva: boolean;
   moneda: string;
+  zonaHoraria?: string; // Huso horario del salón (por defecto "America/Panama")
   especialidades?: Especialidad[];
   firebaseConfig?: {
     apiKey?: string;

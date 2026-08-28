@@ -41,12 +41,12 @@ export default function NotificationBanner() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-md w-[calc(100vw-2rem)] sm:w-auto animate-in slide-in-from-bottom-5 duration-300">
-      <div className="rounded-2xl border-2 border-[#B85D75] bg-white p-4 shadow-2xl shadow-[#B85D75]/25">
+    <div className="fixed bottom-4 right-4 z-50 max-w-md w-[calc(100vw-2rem)] sm:w-auto">
+      <div className="rounded-2xl border-2 border-[#B85D75] bg-white p-4 shadow-2xl shadow-black/20">
         {/* Encabezado de la alerta */}
         <div className="flex items-start justify-between gap-3 border-b border-[#F2E8DF] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-gold-gradient text-white animate-ring-bell">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-gold-gradient text-white">
               <Bell className="h-5 w-5" />
             </div>
             <div>

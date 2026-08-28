@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useSalon } from '@/context/SalonContext';
-import { Colaborador, ServicioColaborador } from '@/types/salon';
+import { Colaborador, ServicioColaborador, AdministradorAdicional } from '@/types/salon';
 import { processImageFile } from '@/lib/imageHelper';
+import { generarPasswordPorDefecto } from '@/lib/seedData';
 import {
   X,
   Plus,
@@ -18,6 +19,14 @@ import {
   Image as ImageIcon,
   DollarSign,
   Briefcase,
+  Key,
+  RotateCcw,
+  ShieldBan,
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertTriangle,
 } from 'lucide-react';
 
 const DIAS_SEMANA_OPCIONES = [
@@ -41,14 +50,20 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     servicios,
     especialidades,
     configuracion,
+    usuarioSesion,
     guardarColaborador,
     eliminarColaborador,
+    resetearPasswordColaborador,
+    toggleRestriccionColaborador,
+    guardarAdministrador,
+    eliminarAdministrador,
   } = useSalon();
+
+  const esSuperAdmin = usuarioSesion?.tipo === 'superadmin' || !!usuarioSesion?.esSuperAdmin;
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formNombre, setFormNombre] = useState<string>('');
   const [formFoto, setFormFoto] = useState<string | null>(null);
-  const [formPin, setFormPin] = useState<string>('1234');
   const [formTelefono, setFormTelefono] = useState<string>('+52 55 ');
   const [formBiografia, setFormBiografia] = useState<string>('');
   const [formEspecialidades, setFormEspecialidades] = useState<string[]>([]);
@@ -59,7 +74,14 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
   const [formDescansoInicio, setFormDescansoInicio] = useState<string>('14:00');
   const [formDescansoFin, setFormDescansoFin] = useState<string>('15:00');
   const [formActivo, setFormActivo] = useState<boolean>(true);
+  const [formAccesoRestringido, setFormAccesoRestringido] = useState<boolean>(false);
+  const [formMotivoRestriccion, setFormMotivoRestriccion] = useState<string>('Falta de pago de cuota mensual');
   const [cargandoFoto, setCargandoFoto] = useState<boolean>(false);
+  const [mensajeReset, setMensajeReset] = useState<string | null>(null);
+
+  // Formulario Superadmin para nuevo Administrador
+  const [nuevoAdminNombre, setNuevoAdminNombre] = useState('');
+  const [nuevoAdminPin, setNuevoAdminPin] = useState('');
 
   if (!isOpen) return null;
 
@@ -67,10 +89,11 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     setEditandoId(colaborador.id);
     setFormNombre(colaborador.nombre);
     setFormFoto(colaborador.foto || null);
-    setFormPin(colaborador.pin || '1234');
     setFormTelefono(colaborador.telefono);
     setFormBiografia(colaborador.biografia || '');
     setFormEspecialidades(colaborador.especialidades || []);
+    setFormAccesoRestringido(!!colaborador.accesoRestringido);
+    setFormMotivoRestriccion(colaborador.motivoRestriccion || 'Falta de pago de cuota mensual');
     
     // Mapear servicios asignados
     const mapaServicios: { [servicioId: string]: { activo: boolean; precio: number } } = {};
@@ -104,10 +127,11 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     setEditandoId(null);
     setFormNombre('');
     setFormFoto(null);
-    setFormPin('1234');
     setFormTelefono('+52 55 ');
     setFormBiografia('');
     setFormEspecialidades([]);
+    setFormAccesoRestringido(false);
+    setFormMotivoRestriccion('Falta de pago de cuota mensual');
     
     const mapaServicios: { [servicioId: string]: { activo: boolean; precio: number } } = {};
     servicios.forEach((s) => {
@@ -116,8 +140,8 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
     setFormServiciosAsignados(mapaServicios);
 
     setFormDias([1, 2, 3, 4, 5, 6]);
-    setFormHoraInicio('09:00');
-    setFormHoraFin('19:00');
+    setFormHoraInicio('08:00');
+    setFormHoraFin('23:00');
     setFormDescansoInicio('14:00');
     setFormDescansoFin('15:00');
     setFormActivo(true);
@@ -164,17 +188,25 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
       activo: formServiciosAsignados[sId].activo,
     }));
 
+    // Contraseña automática por defecto ([nombre]123) o mantener la que la colaboradora ya configuró
+    const defaultPassword = generarPasswordPorDefecto(formNombre);
+    const targetOriginal = colaboradores.find((c) => c.id === editandoId);
+    const pinFinal = targetOriginal?.pin || defaultPassword;
+
     const nueva: Colaborador = {
       id: editandoId || `colab-${Date.now()}`,
       nombre: formNombre.trim(),
       foto: formFoto || null,
-      pin: formPin.trim() || '1234',
+      pin: pinFinal,
+      passwordOriginal: targetOriginal?.passwordOriginal || defaultPassword,
       telefono: formTelefono.trim(),
       biografia: formBiografia.trim() || 'Especialista en belleza y bienestar.',
       especialidades: formEspecialidades,
       serviciosAsignados: serviciosAsignadosArray,
       color: '#B85D75',
       activo: formActivo,
+      accesoRestringido: formAccesoRestringido,
+      motivoRestriccion: formAccesoRestringido ? formMotivoRestriccion : '',
       horarioBase: {
         dias: formDias,
         horaInicio: formHoraInicio,
@@ -186,6 +218,38 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
 
     await guardarColaborador(nueva);
     limpiarFormulario();
+  };
+
+  const handleResetPassword = async (colaborador: Colaborador) => {
+    await resetearPasswordColaborador(colaborador.id);
+    setMensajeReset(`Contraseña de ${colaborador.nombre} restablecida con éxito a su clave inicial por defecto.`);
+    setTimeout(() => setMensajeReset(null), 4000);
+  };
+
+  const handleToggleRestriccion = async (colaborador: Colaborador) => {
+    const nuevoEstado = !colaborador.accesoRestringido;
+    await toggleRestriccionColaborador(
+      colaborador.id,
+      nuevoEstado,
+      nuevoEstado ? 'Falta de pago de cuota mensual' : ''
+    );
+  };
+
+  const handleCrearAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevoAdminNombre.trim() || !nuevoAdminPin.trim()) return;
+
+    const nuevoAdmin: AdministradorAdicional = {
+      id: `admin-${Date.now()}`,
+      nombre: nuevoAdminNombre.trim(),
+      pin: nuevoAdminPin.trim(),
+      activo: true,
+      creadoEn: new Date().toISOString(),
+    };
+
+    await guardarAdministrador(nuevoAdmin);
+    setNuevoAdminNombre('');
+    setNuevoAdminPin('');
   };
 
   const obtenerIniciales = (nombre: string) => {
@@ -303,7 +367,7 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
             </div>
 
             {/* Datos Personales */}
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
                   Nombre Completo:
@@ -331,21 +395,6 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                   className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
-                  PIN Personal (Login):
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={8}
-                  placeholder="Ej. 1111"
-                  value={formPin}
-                  onChange={(e) => setFormPin(e.target.value)}
-                  className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] font-bold focus:border-[#B85D75] focus:outline-hidden"
-                />
-              </div>
             </div>
 
             <div>
@@ -359,6 +408,41 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                 onChange={(e) => setFormBiografia(e.target.value)}
                 className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2.5 text-xs text-[#2D2424] focus:border-[#B85D75] focus:outline-hidden"
               />
+            </div>
+
+            {/* SECCIÓN DE RESTRICCIÓN DE ACCESO (POR PAGO / ADMINISTRACIÓN) */}
+            <div className={`rounded-2xl p-4 border transition ${
+              formAccesoRestringido ? 'bg-rose-50 border-rose-300' : 'bg-[#FAF6F0] border-[#EFE7DE]'
+            }`}>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs font-bold text-[#2D2424] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formAccesoRestringido}
+                    onChange={(e) => setFormAccesoRestringido(e.target.checked)}
+                    className="rounded border-[#E6D7CB] text-rose-600 focus:ring-rose-500"
+                  />
+                  <span className="flex items-center gap-1.5 text-rose-800">
+                    <ShieldBan className="h-4 w-4 text-rose-600" />
+                    Restringir acceso al portal (Suspender por falta de pago mensual)
+                  </span>
+                </label>
+              </div>
+
+              {formAccesoRestringido && (
+                <div className="mt-3 animate-in fade-in duration-150">
+                  <label className="block text-[11px] font-semibold text-rose-900 mb-1">
+                    Motivo de suspensión visible para la colaboradora:
+                  </label>
+                  <input
+                    type="text"
+                    value={formMotivoRestriccion}
+                    onChange={(e) => setFormMotivoRestriccion(e.target.value)}
+                    placeholder="Ej. Falta de pago de cuota mensual..."
+                    className="w-full rounded-xl border border-rose-300 bg-white p-2 text-xs text-rose-950 focus:outline-hidden"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Especialidades Asignadas */}
@@ -550,6 +634,91 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
             </div>
           </form>
 
+          {/* Notificación de reseteo exitoso */}
+          {mensajeReset && (
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-300 p-3.5 flex items-center justify-between gap-2 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs text-emerald-900 font-bold">
+                <Check className="h-4 w-4 text-emerald-600" />
+                <span>{mensajeReset}</span>
+              </div>
+              <button
+                onClick={() => setMensajeReset(null)}
+                className="text-xs text-emerald-700 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* SECCIÓN EXCLUSIVA PARA SUPERADMIN: GESTIÓN DE ROLES DE ADMINISTRADOR */}
+          {esSuperAdmin && (
+            <div className="rounded-2xl border-2 border-purple-200 bg-purple-50/50 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-purple-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-purple-700" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-purple-900">
+                    👑 Panel de Superusuario - Crear Roles de Administrador
+                  </h4>
+                </div>
+                <span className="text-[10px] text-purple-700 font-semibold">
+                  Acceso Exclusivo Superadmin
+                </span>
+              </div>
+
+              <form onSubmit={handleCrearAdmin} className="grid sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="Nombre del Administrador"
+                  value={nuevoAdminNombre}
+                  onChange={(e) => setNuevoAdminNombre(e.target.value)}
+                  className="rounded-xl border border-purple-200 bg-white p-2 text-xs text-[#2D2424]"
+                />
+                <input
+                  type="password"
+                  required
+                  placeholder="Contraseña de Administrador"
+                  value={nuevoAdminPin}
+                  onChange={(e) => setNuevoAdminPin(e.target.value)}
+                  className="rounded-xl border border-purple-200 bg-white p-2 text-xs text-[#2D2424]"
+                />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 text-xs font-bold transition shadow-2xs"
+                >
+                  ➕ Crear Administrador
+                </button>
+              </form>
+
+              {configuracion.administradores && configuracion.administradores.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-purple-200">
+                  <span className="text-[11px] font-bold text-purple-900 block">
+                    Administradores Creados:
+                  </span>
+                  {configuracion.administradores.map((admin) => (
+                    <div
+                      key={admin.id}
+                      className="flex items-center justify-between rounded-xl bg-white p-2 border border-purple-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-purple-700" />
+                        <span className="font-bold text-[#2D2424]">{admin.nombre}</span>
+                        <span className="text-[10px] text-[#8C7A70] font-mono">••••••••</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => eliminarAdministrador(admin.id)}
+                        className="text-xs text-rose-600 hover:underline"
+                      >
+                        Eliminar rol
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Lista de Colaboradoras Actuales */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#8C7A70]">
@@ -560,8 +729,12 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
               {colaboradores.map((c) => (
                 <div
                   key={c.id}
-                  className={`flex items-center justify-between rounded-2xl border p-3.5 bg-white shadow-2xs gap-3 ${
-                    c.activo ? 'border-[#EAE0D5]' : 'border-stone-200 opacity-60'
+                  className={`flex flex-wrap sm:flex-nowrap items-center justify-between rounded-2xl border p-3.5 bg-white shadow-2xs gap-3 ${
+                    c.accesoRestringido
+                      ? 'border-rose-300 bg-rose-50/30'
+                      : c.activo
+                      ? 'border-[#EAE0D5]'
+                      : 'border-stone-200 opacity-60'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -577,11 +750,21 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                       </div>
                     )}
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-bold text-xs text-[#2D2424]">{c.nombre}</span>
-                        <span className="rounded-md bg-[#FAF6F0] border border-[#E6D7CB] px-1.5 py-0.5 text-[9px] font-mono font-bold text-[#B85D75]">
-                          🔑 PIN: {c.pin || '1234'}
+                        
+                        {/* Estado de Contraseña Privada */}
+                        <span className="rounded-md bg-[#FAF6F0] border border-[#E6D7CB] px-1.5 py-0.5 text-[9px] font-mono text-[#8C7A70]">
+                          🔒 Clave Privada
                         </span>
+
+                        {c.accesoRestringido && (
+                          <span className="rounded-md bg-rose-100 text-rose-800 border border-rose-200 px-1.5 py-0.5 text-[9px] font-bold flex items-center gap-0.5">
+                            <ShieldBan className="h-2.5 w-2.5" />
+                            Acceso Restringido (Pago pendiente)
+                          </span>
+                        )}
+
                         {!c.activo && (
                           <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[9px] text-stone-500">
                             Inactiva
@@ -608,7 +791,42 @@ export default function CollaboratorsManagerModal({ isOpen, onClose }: Collabora
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                    {/* Botón Resetear Contraseña */}
+                    <button
+                      type="button"
+                      onClick={() => handleResetPassword(c)}
+                      className="flex items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 transition shadow-2xs"
+                      title="Restablecer contraseña al formato por defecto (nombre123)"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-amber-700" />
+                      <span>Resetear Clave</span>
+                    </button>
+
+                    {/* Botón Restringir / Habilitar Acceso */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleRestriccion(c)}
+                      className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition shadow-2xs border ${
+                        c.accesoRestringido
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100'
+                          : 'bg-rose-50 border-rose-300 text-rose-900 hover:bg-rose-100'
+                      }`}
+                      title={c.accesoRestringido ? 'Habilitar acceso al portal' : 'Restringir acceso al portal (ej. falta de pago)'}
+                    >
+                      {c.accesoRestringido ? (
+                        <>
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
+                          <span>Habilitar</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldBan className="h-3.5 w-3.5 text-rose-700" />
+                          <span>Restringir</span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       onClick={() => iniciarEdicion(c)}
                       className="rounded-lg p-2 text-[#5A4D48] hover:bg-[#F4EDE4] transition"

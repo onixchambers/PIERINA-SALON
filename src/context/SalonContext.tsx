@@ -11,6 +11,7 @@ import {
   EstadoCita,
   Especialidad,
   UsuarioSesion,
+  AdministradorAdicional,
 } from '@/types/salon';
 import {
   CONFIG_INICIAL,
@@ -19,6 +20,7 @@ import {
   CITAS_INICIALES,
   BLOQUEOS_INICIALES,
   ESPECIALIDADES_INICIALES,
+  generarPasswordPorDefecto,
 } from '@/lib/seedData';
 import { soundService } from '@/lib/sound';
 import { initFirebase } from '@/lib/firebase';
@@ -32,6 +34,12 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 
+export interface LoginResultado {
+  exito: boolean;
+  sesion?: UsuarioSesion;
+  errorMotivo?: string;
+}
+
 interface SalonContextType {
   citas: Cita[];
   servicios: Servicio[];
@@ -44,7 +52,7 @@ interface SalonContextType {
   cargando: boolean;
   usuarioSesion: UsuarioSesion | null;
   nuevaSolicitudNotificacion: Cita | null;
-  loginPorPin: (pin: string) => UsuarioSesion | null;
+  loginPorPin: (pin: string) => LoginResultado;
   logout: () => void;
   descartarNotificacion: () => void;
   crearCita: (datos: {
@@ -64,6 +72,12 @@ interface SalonContextType {
   }) => Promise<Cita>;
   actualizarEstadoCita: (id: string, nuevoEstado: EstadoCita) => Promise<void>;
   eliminarCita: (id: string) => Promise<void>;
+  reprogramarCita: (
+    citaId: string,
+    nuevaFecha: string,
+    nuevaHoraInicio: string,
+    nuevoColaboradorId?: string
+  ) => Promise<void>;
   guardarServicio: (servicio: Servicio) => Promise<void>;
   eliminarServicio: (id: string) => Promise<void>;
   guardarColaborador: (colaborador: Colaborador) => Promise<void>;
@@ -71,11 +85,28 @@ interface SalonContextType {
   eliminarColaborador: (id: string) => Promise<void>;
   eliminarTerapeuta: (id: string) => Promise<void>; // Alias
   cambiarPinColaborador: (colaboradorId: string, nuevoPin: string) => Promise<void>;
+  actualizarFotoColaborador: (colaboradorId: string, nuevaFoto: string | null) => Promise<void>;
+  resetearPasswordColaborador: (colaboradorId: string) => Promise<string>;
+  toggleRestriccionColaborador: (
+    colaboradorId: string,
+    restringido: boolean,
+    motivo?: string
+  ) => Promise<void>;
   cambiarPinAdmin: (nuevoPin: string) => Promise<void>;
+  guardarAdministrador: (admin: AdministradorAdicional) => Promise<void>;
+  eliminarAdministrador: (id: string) => Promise<void>;
   guardarEspecialidad: (especialidad: Especialidad) => Promise<void>;
   eliminarEspecialidad: (id: string) => Promise<void>;
   agregarBloqueo: (bloqueo: Omit<BloqueoDisponibilidad, 'id' | 'creadoEn'>) => Promise<void>;
   eliminarBloqueo: (id: string) => Promise<void>;
+  desbloquearTodoElDia: (fecha: string, colaboradorId?: string) => Promise<void>;
+  reprogramarBloqueo: (
+    id: string,
+    nuevaFecha: string,
+    nuevaHoraInicio?: string,
+    nuevaHoraFin?: string,
+    nuevoColaboradorId?: string
+  ) => Promise<void>;
   actualizarConfiguracion: (nuevaConfig: Partial<ConfiguracionSalon>) => Promise<void>;
   resetearADatosPorDefecto: () => void;
 }
@@ -136,13 +167,21 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       if (storedConfig) {
         try {
           const conf = JSON.parse(storedConfig);
+          const pinAdminMigrado = conf.pinAdmin && conf.pinAdmin !== '1234' ? conf.pinAdmin : 'pierina123';
+          const horarioAperturaMigrado = conf.horarioApertura === '09:00' || !conf.horarioApertura ? '08:00' : conf.horarioApertura;
+          const horarioCierreMigrado = conf.horarioCierre === '20:00' || !conf.horarioCierre ? '23:00' : conf.horarioCierre;
           const mergedConfig: ConfiguracionSalon = {
             ...CONFIG_INICIAL,
             ...conf,
             nombreSalon: 'Pierina Salón',
             eslogan: conf.eslogan && !conf.eslogan.includes('consciente') ? conf.eslogan : 'Cejas, pestañas y más',
             logoUrl: conf.logoUrl || '/logo-pierina.png',
-            pinAdmin: conf.pinAdmin || '1234',
+            pinAdmin: pinAdminMigrado,
+            pinSuperAdmin: conf.pinSuperAdmin || 'onix1974',
+            administradores: conf.administradores || [],
+            zonaHoraria: conf.zonaHoraria || 'America/Panama',
+            horarioApertura: horarioAperturaMigrado,
+            horarioCierre: horarioCierreMigrado,
           };
           setConfiguracion(mergedConfig);
           localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(mergedConfig));
@@ -180,12 +219,21 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         try {
           const colabs: Colaborador[] = JSON.parse(storedColab);
           if (Array.isArray(colabs) && colabs.length > 0) {
-            // Asegurar que cada colaboradora tenga PIN asignado
+            // Asegurar que cada colaboradora tenga contraseña por defecto según su nombre
             const colabsConPin = colabs.map((c) => {
               const inicial = COLABORADORES_INICIALES.find((i) => i.id === c.id);
+              const defaultPass = generarPasswordPorDefecto(c.nombre);
+              // Migrar PINs numéricos de 4 dígitos antiguos al formato nombre123
+              const pinValido = c.pin && !['1111', '2222', '3333', '4444', '1234'].includes(c.pin)
+                ? c.pin
+                : inicial?.pin || defaultPass;
+
               return {
                 ...c,
-                pin: c.pin || inicial?.pin || '1234',
+                pin: pinValido,
+                passwordOriginal: c.passwordOriginal || defaultPass,
+                accesoRestringido: c.accesoRestringido || false,
+                motivoRestriccion: c.motivoRestriccion || '',
               };
             });
             setColaboradores(colabsConPin);
@@ -314,13 +362,33 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq];
   };
 
-  // Autenticación inteligente por PIN (detecta automáticamente Administradora o Colaboradora)
-  const loginPorPin = (pin: string): UsuarioSesion | null => {
-    const pinLimpio = pin.trim();
-    if (!pinLimpio) return null;
+  // Autenticación inteligente sin usuario (detecta Superadmin, Admin o Colaboradora por su contraseña)
+  const loginPorPin = (pin: string): LoginResultado => {
+    const pinLimpio = (pin || '').trim();
+    if (!pinLimpio) {
+      return { exito: false, errorMotivo: 'Por favor ingresa tu contraseña.' };
+    }
 
-    // 1. Comprobar si es PIN de Administradora General
-    if (pinLimpio === configuracion.pinAdmin || pinLimpio === '1234') {
+    const pinMin = pinLimpio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // 1. Comprobar si es Superadministrador (clave "onix1974" o configurada)
+    const confSuperMin = (configuracion.pinSuperAdmin || 'onix1974').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (pinMin === confSuperMin || pinMin === 'onix1974') {
+      const sesion: UsuarioSesion = {
+        tipo: 'superadmin',
+        nombre: 'Superadministrador',
+        foto: configuracion.logoUrl || '/logo-pierina.png',
+        esSuperAdmin: true,
+      };
+      setUsuarioSesion(sesion);
+      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      soundService.playSuccess();
+      return { exito: true, sesion };
+    }
+
+    // 2. Comprobar si es Administradora General (clave configurada en el sistema, por defecto "pierina123")
+    const confAdminMin = (configuracion.pinAdmin || 'pierina123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (pinMin === confAdminMin) {
       const sesion: UsuarioSesion = {
         tipo: 'admin',
         nombre: 'Administración General (Pierina Salón)',
@@ -329,12 +397,53 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
       soundService.playSuccess();
-      return sesion;
+      return { exito: true, sesion };
     }
 
-    // 2. Comprobar si coincide con el PIN de alguna colaboradora
-    const colabEncontrada = colaboradores.find((c) => c.pin === pinLimpio);
+    // 3. Comprobar si coincide con algún Administrador Adicional creado por Superadmin
+    const adminAdicional = configuracion.administradores?.find((a) => {
+      if (!a.activo) return false;
+      const aPinMin = (a.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return aPinMin === pinMin;
+    });
+    if (adminAdicional) {
+      const sesion: UsuarioSesion = {
+        tipo: 'admin',
+        nombre: adminAdicional.nombre,
+        foto: configuracion.logoUrl || '/logo-pierina.png',
+      };
+      setUsuarioSesion(sesion);
+      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      soundService.playSuccess();
+      return { exito: true, sesion };
+    }
+
+    // 4. Comprobar si coincide con la contraseña configurada de alguna colaboradora
+    const colabEncontrada = colaboradores.find((c) => {
+      if (c.pin === '1234') return false; // Bloquear explícitamente 1234
+      const pinColab = (c.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const defPass = generarPasswordPorDefecto(c.nombre).toLowerCase();
+      const origPass = (c.passwordOriginal || defPass).toLowerCase();
+
+      return (
+        pinMin === pinColab ||
+        pinMin === defPass ||
+        pinMin === origPass
+      );
+    });
+
     if (colabEncontrada) {
+      // Verificar si tiene el acceso restringido por falta de pago o decisión administrativa
+      if (colabEncontrada.accesoRestringido) {
+        soundService.playReject();
+        return {
+          exito: false,
+          errorMotivo:
+            colabEncontrada.motivoRestriccion ||
+            `Acceso al portal restringido para ${colabEncontrada.nombre}. Por favor comunícate con la administración para verificar el estado de tu cuenta mensual.`,
+        };
+      }
+
       const sesion: UsuarioSesion = {
         tipo: 'colaborador',
         colaboradorId: colabEncontrada.id,
@@ -344,11 +453,14 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
       soundService.playSuccess();
-      return sesion;
+      return { exito: true, sesion };
     }
 
     soundService.playReject();
-    return null;
+    return {
+      exito: false,
+      errorMotivo: 'Contraseña no reconocida. Verifica tu clave de acceso personal o contacta a la administración.',
+    };
   };
 
   const logout = () => {
@@ -385,8 +497,168 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const actualizarFotoColaborador = async (colaboradorId: string, nuevaFoto: string | null) => {
+    const updated = colaboradores.map((c) => {
+      if (c.id === colaboradorId) {
+        return { ...c, foto: nuevaFoto };
+      }
+      return c;
+    });
+
+    setColaboradores(updated);
+    localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
+
+    if (usuarioSesion && usuarioSesion.colaboradorId === colaboradorId) {
+      const updatedSesion = { ...usuarioSesion, foto: nuevaFoto || configuracion.logoUrl || '/logo-pierina.png' };
+      setUsuarioSesion(updatedSesion);
+      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(updatedSesion));
+    }
+
+    if (dbRef.current) {
+      try {
+        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), { foto: nuevaFoto }, { merge: true });
+      } catch (err) {
+        console.warn('Error actualizando foto de colaboradora en Firestore:', err);
+      }
+    }
+
+    soundService.playSuccess();
+  };
+
+  // Resetear la contraseña de una colaboradora a su valor original por defecto (ej. valentina123)
+  const resetearPasswordColaborador = async (colaboradorId: string): Promise<string> => {
+    const target = colaboradores.find((c) => c.id === colaboradorId);
+    if (!target) return 'pierina123';
+
+    const defaultPass = target.passwordOriginal || generarPasswordPorDefecto(target.nombre);
+    const updated = colaboradores.map((c) => {
+      if (c.id === colaboradorId) {
+        return {
+          ...c,
+          pin: defaultPass,
+          passwordOriginal: defaultPass,
+        };
+      }
+      return c;
+    });
+
+    setColaboradores(updated);
+    localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
+
+    if (dbRef.current) {
+      try {
+        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), { pin: defaultPass, passwordOriginal: defaultPass }, { merge: true });
+      } catch (err) {
+        console.warn('Error reseteando contraseña en Firestore:', err);
+      }
+    }
+
+    soundService.playSuccess();
+    return defaultPass;
+  };
+
+  // Restringir / Habilitar acceso de una colaboradora al portal
+  const toggleRestriccionColaborador = async (
+    colaboradorId: string,
+    restringido: boolean,
+    motivo?: string
+  ) => {
+    const updated = colaboradores.map((c) => {
+      if (c.id === colaboradorId) {
+        return {
+          ...c,
+          accesoRestringido: restringido,
+          motivoRestriccion: motivo !== undefined ? motivo : c.motivoRestriccion || '',
+        };
+      }
+      return c;
+    });
+
+    setColaboradores(updated);
+    localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(updated));
+
+    // Si la colaboradora actualmente tiene la sesión activa y fue restringida, cerrar sesión
+    if (usuarioSesion && usuarioSesion.colaboradorId === colaboradorId && restringido) {
+      logout();
+    }
+
+    if (dbRef.current) {
+      try {
+        await setDoc(doc(dbRef.current, 'colaboradores', colaboradorId), {
+          accesoRestringido: restringido,
+          motivoRestriccion: motivo || '',
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Error actualizando restricción en Firestore:', err);
+      }
+    }
+  };
+
   const cambiarPinAdmin = async (nuevoPin: string) => {
     await actualizarConfiguracion({ pinAdmin: nuevoPin.trim() });
+  };
+
+  const guardarAdministrador = async (admin: AdministradorAdicional) => {
+    const list = configuracion.administradores || [];
+    const exists = list.some((a) => a.id === admin.id);
+    const updated = exists ? list.map((a) => (a.id === admin.id ? admin : a)) : [...list, admin];
+    await actualizarConfiguracion({ administradores: updated });
+  };
+
+  const eliminarAdministrador = async (id: string) => {
+    const list = configuracion.administradores || [];
+    const updated = list.filter((a) => a.id !== id);
+    await actualizarConfiguracion({ administradores: updated });
+  };
+
+  // Reprogramar Cita (con cálculo de horaFin automático)
+  const reprogramarCita = async (
+    citaId: string,
+    nuevaFecha: string,
+    nuevaHoraInicio: string,
+    nuevoColaboradorId?: string
+  ) => {
+    const cita = citas.find((c) => c.id === citaId);
+    if (!cita) return;
+
+    const [h, m] = nuevaHoraInicio.split(':').map(Number);
+    const endMinutes = h * 60 + m + (cita.duracionTotalMin || 60);
+    const endH = Math.floor(endMinutes / 60);
+    const endM = endMinutes % 60;
+    const nuevaHoraFin = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+    const targetColabId = nuevoColaboradorId || cita.colaboradorId || cita.terapeutaId;
+
+    const updated = citas.map((c) => {
+      if (c.id === citaId) {
+        return {
+          ...c,
+          fecha: nuevaFecha,
+          horaInicio: nuevaHoraInicio,
+          horaFin: nuevaHoraFin,
+          terapeutaId: targetColabId,
+          colaboradorId: targetColabId,
+          actualizadoEn: new Date().toISOString(),
+        };
+      }
+      return c;
+    });
+
+    setCitas(updated);
+    localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
+
+    if (dbRef.current) {
+      try {
+        const target = updated.find((c) => c.id === citaId);
+        if (target) {
+          await setDoc(doc(dbRef.current, 'citas', citaId), target, { merge: true });
+        }
+      } catch (err) {
+        console.warn('Error reprogramando cita en Firestore:', err);
+      }
+    }
+
+    soundService.playSuccess();
   };
 
   const descartarNotificacion = useCallback(() => {
@@ -443,10 +715,16 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    if (configuracion.alertaSonoraActiva) {
-      soundService.playChime();
+    // Solo emitir alerta sonora y toast de notificación si la cita viene del cliente web
+    // o si fue agendada por otra persona (no cuando la colaboradora se la agenda a sí misma)
+    const esAutoAgendado = datos.origen === 'admin_manual' && usuarioSesion?.tipo === 'colaborador' && (targetId === usuarioSesion.colaboradorId);
+
+    if (!esAutoAgendado) {
+      if (configuracion.alertaSonoraActiva) {
+        soundService.playChime();
+      }
+      setNuevaSolicitudNotificacion(nuevaCita);
     }
-    setNuevaSolicitudNotificacion(nuevaCita);
 
     return nuevaCita;
   };
@@ -463,10 +741,16 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setCitas(updated);
     localStorage.setItem(STORAGE_KEYS.CITAS, JSON.stringify(updated));
 
-    if (nuevoEstado === 'Confirmada') {
-      soundService.playSuccess();
-    } else if (nuevoEstado === 'Rechazada') {
-      soundService.playReject();
+    if (configuracion.alertaSonoraActiva) {
+      if (nuevoEstado === 'Confirmada') {
+        soundService.playSuccess();
+      } else if (nuevoEstado === 'Rechazada') {
+        soundService.playReject();
+      } else if (nuevoEstado === 'Pendiente') {
+        soundService.playPending();
+      } else if (nuevoEstado === 'Completada') {
+        soundService.playCompleted();
+      }
     }
 
     if (dbRef.current) {
@@ -585,9 +869,17 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
   // Agregar Bloqueo de Disponibilidad
   const agregarBloqueo = async (bloqueo: Omit<BloqueoDisponibilidad, 'id' | 'creadoEn'>) => {
+    // Si la sesión es de colaboradora, solo puede bloquear su propia agenda
+    const terapeutaIdFinal =
+      usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId
+        ? usuarioSesion.colaboradorId
+        : bloqueo.terapeutaId;
+
     const nuevoBloqueo: BloqueoDisponibilidad = {
       id: `bloq-${Date.now()}`,
       ...bloqueo,
+      terapeutaId: terapeutaIdFinal,
+      colaboradorId: terapeutaIdFinal,
       creadoEn: new Date().toISOString(),
     };
 
@@ -606,6 +898,19 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
 
   // Eliminar Bloqueo
   const eliminarBloqueo = async (id: string) => {
+    // Si es colaboradora, verificar que el bloqueo sea propio
+    if (usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId) {
+      const bloqTarget = bloqueos.find((b) => b.id === id);
+      if (
+        bloqTarget &&
+        bloqTarget.terapeutaId !== usuarioSesion.colaboradorId &&
+        bloqTarget.colaboradorId !== usuarioSesion.colaboradorId
+      ) {
+        console.warn('No tienes permisos para eliminar bloqueos de otra terapeuta');
+        return;
+      }
+    }
+
     const updated = bloqueos.filter((b) => b.id !== id);
     setBloqueos(updated);
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
@@ -615,6 +920,77 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         await deleteDoc(doc(dbRef.current, 'bloqueos', id));
       } catch (err) {
         console.warn('Error eliminando bloqueo en Firestore:', err);
+      }
+    }
+  };
+
+  // Desbloquear todos los bloqueos de una fecha para un colaborador o todo el salón
+  const desbloquearTodoElDia = async (fecha: string, colaboradorId?: string) => {
+    const colabIdFinal =
+      usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId
+        ? usuarioSesion.colaboradorId
+        : colaboradorId;
+
+    const updated = bloqueos.filter((b) => {
+      if (b.fecha !== fecha) return true;
+      if (colabIdFinal && colabIdFinal !== 'all') {
+        return b.terapeutaId !== colabIdFinal && b.colaboradorId !== colabIdFinal && b.terapeutaId !== 'all';
+      }
+      return false;
+    });
+
+    setBloqueos(updated);
+    localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
+
+    if (dbRef.current) {
+      try {
+        const toDelete = bloqueos.filter((b) => {
+          if (b.fecha !== fecha) return false;
+          if (colabIdFinal && colabIdFinal !== 'all') {
+            return b.terapeutaId === colabIdFinal || b.colaboradorId === colabIdFinal || b.terapeutaId === 'all';
+          }
+          return true;
+        });
+        await Promise.all(toDelete.map((b) => deleteDoc(doc(dbRef.current!, 'bloqueos', b.id))));
+      } catch (err) {
+        console.warn('Error desbloqueando todo el día en Firestore:', err);
+      }
+    }
+  };
+
+  // Reprogramar / Mover Bloqueo
+  const reprogramarBloqueo = async (
+    id: string,
+    nuevaFecha: string,
+    nuevaHoraInicio?: string,
+    nuevaHoraFin?: string,
+    nuevoColaboradorId?: string
+  ) => {
+    const updated = bloqueos.map((b) => {
+      if (b.id === id) {
+        return {
+          ...b,
+          fecha: nuevaFecha,
+          horaInicio: nuevaHoraInicio !== undefined ? nuevaHoraInicio : b.horaInicio,
+          horaFin: nuevaHoraFin !== undefined ? nuevaHoraFin : b.horaFin,
+          terapeutaId: nuevoColaboradorId || b.terapeutaId,
+          colaboradorId: nuevoColaboradorId || b.colaboradorId,
+        };
+      }
+      return b;
+    });
+
+    setBloqueos(updated);
+    localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(updated));
+
+    if (dbRef.current) {
+      try {
+        const target = updated.find((b) => b.id === id);
+        if (target) {
+          await setDoc(doc(dbRef.current, 'bloqueos', id), target, { merge: true });
+        }
+      } catch (err) {
+        console.warn('Error reprogramando bloqueo en Firestore:', err);
       }
     }
   };
@@ -682,11 +1058,19 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         eliminarColaborador,
         eliminarTerapeuta: eliminarColaborador, // Alias
         cambiarPinColaborador,
+        actualizarFotoColaborador,
+        resetearPasswordColaborador,
+        toggleRestriccionColaborador,
         cambiarPinAdmin,
+        guardarAdministrador,
+        eliminarAdministrador,
         guardarEspecialidad,
         eliminarEspecialidad,
         agregarBloqueo,
         eliminarBloqueo,
+        desbloquearTodoElDia,
+        reprogramarBloqueo,
+        reprogramarCita,
         actualizarConfiguracion,
         resetearADatosPorDefecto,
       }}

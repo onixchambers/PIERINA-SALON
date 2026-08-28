@@ -88,12 +88,14 @@ export default function Navbar({ onOpenCatalog, onOpenLookup }: NavbarProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-[11px]">
-              <Database className="h-3 w-3 text-[#B85D75]" />
-              <span className={isFirebaseConnected ? 'text-emerald-700 font-semibold' : 'text-[#8C7A70]'}>
-                {isFirebaseConnected ? 'Firebase Realtime Cloud' : 'Modo Reactivo Local'}
-              </span>
-            </div>
+            {isFirebaseConnected && (
+              <div className="flex items-center gap-1 text-[11px]">
+                <Database className="h-3 w-3 text-[#B85D75]" />
+                <span className="text-emerald-700 font-semibold">
+                  Firebase Cloud Activo
+                </span>
+              </div>
+            )}
 
             <button
               onClick={toggleSonido}

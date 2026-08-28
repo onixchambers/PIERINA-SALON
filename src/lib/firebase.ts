@@ -44,7 +44,7 @@ export function initFirebase(customConfig?: FirebaseConfigInput): { app: Firebas
     firestoreDb = getFirestore(firebaseApp);
     return { app: firebaseApp, db: firestoreDb };
   } catch (err) {
-    console.warn('Firebase no inicializado (usando modo reactivo local):', err);
+    console.warn('Firebase no inicializado (almacenamiento local):', err);
     return { app: null, db: null };
   }
 }

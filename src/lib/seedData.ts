@@ -1,5 +1,16 @@
 import { Servicio, Colaborador, Cita, BloqueoDisponibilidad, ConfiguracionSalon, Especialidad } from '@/types/salon';
 
+/**
+ * Genera la contraseña por defecto para una colaboradora o usuario según su nombre:
+ * Primer nombre en minúsculas sin acentos + "123" (ej. "Valentina Ramos" -> "valentina123")
+ */
+export function generarPasswordPorDefecto(nombre: string): string {
+  if (!nombre || !nombre.trim()) return 'pierina123';
+  const primerNombre = nombre.trim().split(' ')[0].toLowerCase();
+  const limpio = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  return `${limpio || 'pierina'}123`;
+}
+
 export const ESPECIALIDADES_INICIALES: Especialidad[] = [
   { id: 'pestanas', nombre: 'Pestañas & Cejas', icono: 'Eye', color: '#A855F7' },
   { id: 'unas', nombre: 'Uñas & Manicura', icono: 'Gem', color: '#E07A5F' },
@@ -15,12 +26,15 @@ export const CONFIG_INICIAL: ConfiguracionSalon = {
   logoUrl: '/logo-pierina.png',
   telefonoSalon: '+525541238990',
   direccion: 'Av. Paseo de las Palmas 745, Lomas de Chapultepec, CDMX',
-  horarioApertura: '09:00',
-  horarioCierre: '20:00',
+  horarioApertura: '08:00',
+  horarioCierre: '23:00',
   intervaloMinutos: 30,
-  pinAdmin: '1234',
+  pinAdmin: 'pierina123',
+  pinSuperAdmin: 'onix1974',
+  administradores: [],
   alertaSonoraActiva: true,
   moneda: '$',
+  zonaHoraria: 'America/Panama',
   especialidades: ESPECIALIDADES_INICIALES,
 };
 
@@ -184,11 +198,13 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     id: 'colab-1',
     nombre: 'Valentina Ramos',
     foto: null, // Sin foto ficticia -> avatar monograma con opción a subir foto real
-    pin: '1111',
+    pin: 'valentina123',
+    passwordOriginal: 'valentina123',
     especialidades: ['unas', 'pestanas'],
     telefono: '+525512345678',
     color: '#E07A5F',
     activo: true,
+    accesoRestringido: false,
     biografia: 'Especialista en Manicura Rusa, Soft Gel y diseño de miradas.',
     serviciosAsignados: [
       { servicioId: 'serv-u-1', precioPersonalizado: 480, activo: true },
@@ -209,11 +225,13 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     id: 'colab-2',
     nombre: 'Sofía Morales',
     foto: null,
-    pin: '2222',
+    pin: 'sofia123',
+    passwordOriginal: 'sofia123',
     especialidades: ['cabello'],
     telefono: '+525523456789',
     color: '#818CF8',
     activo: true,
+    accesoRestringido: false,
     biografia: 'Colorista y estilista en balayage francés y diseño de corte.',
     serviciosAsignados: [
       { servicioId: 'serv-c-1', precioPersonalizado: 550, activo: true },
@@ -232,11 +250,13 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     id: 'colab-3',
     nombre: 'Camila Silva',
     foto: null,
-    pin: '3333',
+    pin: 'camila123',
+    passwordOriginal: 'camila123',
     especialidades: ['faciales', 'depilacion'],
     telefono: '+525534567890',
     color: '#10B981',
     activo: true,
+    accesoRestringido: false,
     biografia: 'Cosmiatra en rejuvenecimiento facial y depilación láser.',
     serviciosAsignados: [
       { servicioId: 'serv-f-1', precioPersonalizado: 850, activo: true },
@@ -256,11 +276,13 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     id: 'colab-4',
     nombre: 'Elena Castillo',
     foto: null,
-    pin: '4444',
+    pin: 'elena123',
+    passwordOriginal: 'elena123',
     especialidades: ['masajes', 'faciales'],
     telefono: '+525545678901',
     color: '#F59E0B',
     activo: true,
+    accesoRestringido: false,
     biografia: 'Especialista en masoterapia descontracturante y spa.',
     serviciosAsignados: [
       { servicioId: 'serv-m-1', precioPersonalizado: 790, activo: true },

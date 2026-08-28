@@ -17,12 +17,10 @@ Desarrollada con **Next.js 15**, **React 19**, **Tailwind CSS v4**, **TypeScript
 - **Paso 5 - Seguimiento en Vivo (`/cita/[id]`):** Estado de la cita en tiempo real, enlace de WhatsApp directo con el salón, descarga de archivo `.ics` y sincronización con Google Calendar.
 
 ### 2. Portal de Colaboradoras & Administración (`/admin`)
-- **Detección Inteligente por PIN / Contraseña:** Un único formulario de acceso que detecta automáticamente quién ingresa:
-  - `1234`: **Administración General (Dueña)**
-  - `1111`: **Valentina Ramos** (Uñas & Pestañas)
-  - `2222`: **Sofía Morales** (Cabello)
-  - `3333`: **Camila Silva** (Faciales)
-  - `4444`: **Elena Castillo** (Masajes)
+- **Detección Inteligente por Contraseña:** Un único formulario seguro de acceso que detecta automáticamente quién ingresa según la clave personal asignada:
+  - **Superadministrador:** Clave `onix1974` (creación de roles administrativos y control total)
+  - **Administradora General:** Clave configurada (por defecto `pierina123`)
+  - **Colaboradoras / Terapeutas:** Contraseña configurada por la colaboradora (por defecto `[nombre]123`, ej. `valentina123`)
 - **Gestión Exclusiva de Clientas:** Cada colaboradora visualiza y gestiona únicamente las solicitudes y citas de sus propias clientas.
 - **Cambio de Contraseña:** Cada colaboradora puede modificar su PIN personal en cualquier momento desde la barra superior.
 - **Calendario Multivista:** Vistas conmutables por **Día** (columnas por colaboradora), **Semana** y **Mes**.

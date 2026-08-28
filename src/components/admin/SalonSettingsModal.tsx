@@ -33,11 +33,14 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
     colaboradores,
     especialidades,
     isFirebaseConnected,
+    usuarioSesion,
     actualizarConfiguracion,
     guardarEspecialidad,
     eliminarEspecialidad,
     resetearADatosPorDefecto,
   } = useSalon();
+
+  const esSuperAdmin = usuarioSesion?.tipo === 'superadmin' || !!usuarioSesion?.esSuperAdmin;
 
   const [nombreSalon, setNombreSalon] = useState(configuracion.nombreSalon);
   const [eslogan, setEslogan] = useState(configuracion.eslogan);
@@ -47,8 +50,8 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [horarioApertura, setHorarioApertura] = useState(configuracion.horarioApertura);
   const [horarioCierre, setHorarioCierre] = useState(configuracion.horarioCierre);
   const [intervaloMinutos, setIntervaloMinutos] = useState(configuracion.intervaloMinutos);
-  const [pinAdmin, setPinAdmin] = useState(configuracion.pinAdmin);
   const [alertaSonora, setAlertaSonora] = useState(configuracion.alertaSonoraActiva);
+  const [zonaHoraria, setZonaHoraria] = useState(configuracion.zonaHoraria || 'America/Panama');
 
   // Nueva Especialidad
   const [nuevaEspNombre, setNuevaEspNombre] = useState('');
@@ -104,13 +107,14 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       horarioApertura,
       horarioCierre,
       intervaloMinutos: Number(intervaloMinutos),
-      pinAdmin: pinAdmin.trim() || '1234',
+      pinAdmin: configuracion.pinAdmin || 'pierina123',
       alertaSonoraActiva: alertaSonora,
-      firebaseConfig: fbApiKey && fbProjectId ? {
+      zonaHoraria: zonaHoraria || 'America/Panama',
+      firebaseConfig: esSuperAdmin && fbApiKey && fbProjectId ? {
         apiKey: fbApiKey.trim(),
         projectId: fbProjectId.trim(),
         appId: fbAppId.trim(),
-      } : undefined,
+      } : configuracion.firebaseConfig,
     });
 
     setGuardadoExito(true);
@@ -318,13 +322,36 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
             </div>
           </div>
 
-          {/* Horarios y Seguridad */}
+          {/* Horarios, Zona Horaria y Seguridad */}
           <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424]">
-              Horarios & Seguridad
+              Horarios, Zona Horaria & Seguridad
             </h4>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
+                🌐 Zona / Huso Horario del Salón:
+              </label>
+              <select
+                value={zonaHoraria}
+                onChange={(e) => setZonaHoraria(e.target.value)}
+                className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2.5 text-xs text-[#2D2424] font-semibold focus:border-[#B85D75] focus:outline-hidden"
+              >
+                <option value="America/Panama">🇵🇦 Panamá (GMT-5) - [Por Defecto]</option>
+                <option value="America/Costa_Rica">🇨🇷 Costa Rica / Centroamérica (GMT-6)</option>
+                <option value="America/Bogota">🇨🇴 Colombia / Bogotá (GMT-5)</option>
+                <option value="America/Lima">🇵🇪 Perú / Lima (GMT-5)</option>
+                <option value="America/Mexico_City">🇲🇽 México / CDMX (GMT-6)</option>
+                <option value="America/Caracas">🇻🇪 Venezuela / Caracas (GMT-4)</option>
+                <option value="America/Santo_Domingo">🇩🇴 Rep. Dominicana (GMT-4)</option>
+                <option value="America/Santiago">🇨🇱 Chile / Santiago (GMT-4)</option>
+                <option value="America/Argentina/Buenos_Aires">🇦🇷 Argentina / Buenos Aires (GMT-3)</option>
+                <option value="America/New_York">🇺🇸 Estados Unidos (Miami / New York - GMT-5)</option>
+                <option value="Europe/Madrid">🇪🇸 España / Madrid (GMT+1)</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
                   Apertura:
@@ -348,41 +375,15 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
                   className="w-full rounded-xl border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#5A4D48] mb-1">
-                  PIN Acceso Admin (Dueña):
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8C7A70]" />
-                  <input
-                    type="password"
-                    maxLength={8}
-                    value={pinAdmin}
-                    onChange={(e) => setPinAdmin(e.target.value)}
-                    className="w-full rounded-xl border border-[#E6D7CB] bg-white py-2 pl-8 pr-2 text-xs text-[#2D2424] font-bold"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Resumen de Claves de Colaboradoras */}
             <div className="rounded-xl bg-[#FAF6F0] p-3 border border-[#EFE7DE] space-y-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A70] block">
-                🔑 Claves de Acceso del Personal:
+                🔒 Seguridad y Claves de Acceso:
               </span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {colaboradores.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-lg bg-white p-2 border border-[#EAE0D5]">
-                    <span className="font-semibold text-[#2D2424] truncate">{c.nombre}</span>
-                    <span className="font-mono font-bold text-[#B85D75] ml-1 bg-[#FCEEE9] px-1.5 py-0.5 rounded">
-                      {c.pin || '1234'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-[#8C7A70]">
-                Puedes modificar el PIN de cada colaboradora editando su perfil en el gestor de colaboradoras.
+              <p className="text-[11px] text-[#5A4D48] leading-relaxed">
+                Todas las contraseñas de las colaboradoras son privadas e intransferibles. Si alguna colaboradora olvida su clave, el administrador puede restablecerla en el <strong>Gestor de Colaboradoras</strong>.
               </p>
             </div>
 
@@ -408,50 +409,52 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
             </div>
           </div>
 
-          {/* Conexión Firebase */}
-          <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-[#B85D75]" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424]">
-                  Sincronización Cloud Firebase Firestore
-                </h4>
-              </div>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isFirebaseConnected
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-[#FAF0E6] text-[#8C5845]'
-                }`}
-              >
-                {isFirebaseConnected ? '🟢 Conectado' : '⚡ Local Reactivo'}
-              </span>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div>
-                <label className="block text-[11px] text-[#6B5E59] mb-0.5">API Key:</label>
-                <input
-                  type="text"
-                  placeholder="AIzaSy..."
-                  value={fbApiKey}
-                  onChange={(e) => setFbApiKey(e.target.value)}
-                  className="w-full rounded-lg border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
-                />
+          {/* Conexión Firebase (SÓLO VISIBLE PARA EL SUPERADMINISTRADOR) */}
+          {esSuperAdmin && (
+            <div className="rounded-2xl border border-[#EAE0D5] bg-white p-4 space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-[#B85D75]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D2424]">
+                    Sincronización Cloud Firebase Firestore (Superadmin)
+                  </h4>
+                </div>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    isFirebaseConnected
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-[#FAF0E6] text-[#8C5845]'
+                  }`}
+                >
+                  {isFirebaseConnected ? '🟢 Conectado' : 'Sistema Local'}
+                </span>
               </div>
 
-              <div>
-                <label className="block text-[11px] text-[#6B5E59] mb-0.5">Project ID:</label>
-                <input
-                  type="text"
-                  placeholder="mi-salon-app"
-                  value={fbProjectId}
-                  onChange={(e) => setFbProjectId(e.target.value)}
-                  className="w-full rounded-lg border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
-                />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="block text-[11px] text-[#6B5E59] mb-0.5">API Key:</label>
+                  <input
+                    type="text"
+                    placeholder="AIzaSy..."
+                    value={fbApiKey}
+                    onChange={(e) => setFbApiKey(e.target.value)}
+                    className="w-full rounded-lg border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#6B5E59] mb-0.5">Project ID:</label>
+                  <input
+                    type="text"
+                    placeholder="mi-salon-app"
+                    value={fbProjectId}
+                    onChange={(e) => setFbProjectId(e.target.value)}
+                    className="w-full rounded-lg border border-[#E6D7CB] bg-white p-2 text-xs text-[#2D2424]"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Reset */}
           <div className="flex items-center justify-between pt-2 text-xs">

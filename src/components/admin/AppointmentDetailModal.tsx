@@ -16,7 +16,13 @@ import {
   Sparkles,
   Image as ImageIcon,
 } from 'lucide-react';
-import { getWhatsAppConfirmationLink, formatWhatsAppNumber } from '@/lib/whatsapp';
+import {
+  getWhatsAppConfirmationLink,
+  getWhatsAppRejectionLink,
+  getWhatsAppCompletedLink,
+  getWhatsAppPendingLink,
+  formatWhatsAppNumber,
+} from '@/lib/whatsapp';
 
 interface AppointmentDetailModalProps {
   cita: Cita | null;
@@ -58,7 +64,16 @@ export default function AppointmentDetailModal({
   };
 
   const handleEnviarWhatsApp = () => {
-    const link = getWhatsAppConfirmationLink(cita, servicios, colab, configuracion);
+    let link = '';
+    if (cita.estado === 'Confirmada') {
+      link = getWhatsAppConfirmationLink(cita, servicios, colab, configuracion);
+    } else if (cita.estado === 'Rechazada') {
+      link = getWhatsAppRejectionLink(cita, servicios, colab, configuracion);
+    } else if (cita.estado === 'Completada') {
+      link = getWhatsAppCompletedLink(cita, servicios, colab, configuracion);
+    } else {
+      link = getWhatsAppPendingLink(cita, servicios, colab, configuracion);
+    }
     window.open(link, '_blank');
   };
 
@@ -76,14 +91,14 @@ export default function AppointmentDetailModal({
                 {cita.codigo}
               </h3>
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
                   cita.estado === 'Confirmada'
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-950'
                     : cita.estado === 'Pendiente'
-                    ? 'bg-amber-100 text-amber-800 animate-soft-pulse'
+                    ? 'bg-amber-400/20 border-amber-400/60 text-amber-950 animate-soft-pulse'
                     : cita.estado === 'Rechazada'
-                    ? 'bg-rose-100 text-rose-800'
-                    : 'bg-stone-100 text-stone-800'
+                    ? 'bg-rose-500/20 border-rose-400/60 text-rose-950'
+                    : 'bg-stone-400/25 border-stone-400/60 text-stone-900'
                 }`}
               >
                 {cita.estado}
@@ -192,19 +207,28 @@ export default function AppointmentDetailModal({
             Actualizar Estado de la Cita:
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            {(['Pendiente', 'Confirmada', 'Completada', 'Rechazada'] as EstadoCita[]).map((st) => (
-              <button
-                key={st}
-                onClick={() => handleCambiarEstado(st)}
-                className={`rounded-xl py-1.5 text-xs font-bold transition border ${
-                  cita.estado === st
-                    ? 'border-[#B85D75] bg-[#B85D75] text-white shadow-2xs'
-                    : 'border-[#E6D7CB] bg-white text-[#5A4D48] hover:bg-[#F4EDE4]'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+            {(['Pendiente', 'Confirmada', 'Completada', 'Rechazada'] as EstadoCita[]).map((st) => {
+              const esActivo = cita.estado === st;
+              const estiloBoton = esActivo
+                ? st === 'Confirmada'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : st === 'Pendiente'
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                  : st === 'Rechazada'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                  : 'bg-stone-600 text-white border-stone-600 shadow-xs'
+                : 'border-[#E6D7CB] bg-white text-[#5A4D48] hover:bg-[#F4EDE4]';
+
+              return (
+                <button
+                  key={st}
+                  onClick={() => handleCambiarEstado(st)}
+                  className={`rounded-xl py-2 text-xs font-bold transition border ${estiloBoton}`}
+                >
+                  {st}
+                </button>
+              );
+            })}
           </div>
         </div>
 

@@ -127,6 +127,80 @@ class SoundEngine {
       // Silently handle
     }
   }
+
+  /**
+   * Sonido distintivo para estado PENDIENTE (Doble tono cálido marimba/campana)
+   */
+  playPending() {
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const notes = [
+        { freq: 440.00, start: 0.0, dur: 0.25 }, // A4
+        { freq: 554.37, start: 0.12, dur: 0.35 }, // C#5
+      ];
+
+      notes.forEach(({ freq, start, dur }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + start);
+
+        gain.gain.setValueAtTime(0, now + start);
+        gain.gain.linearRampToValueAtTime(0.14, now + start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + start);
+        osc.stop(now + start + dur);
+      });
+    } catch {
+      // Silently handle
+    }
+  }
+
+  /**
+   * Sonido distintivo para estado COMPLETADA (Acorde brillante arpegiado / Triunfo)
+   */
+  playCompleted() {
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const notes = [
+        { freq: 523.25, start: 0.00, dur: 0.35 }, // C5
+        { freq: 659.25, start: 0.07, dur: 0.35 }, // E5
+        { freq: 783.99, start: 0.14, dur: 0.40 }, // G5
+        { freq: 1046.50, start: 0.21, dur: 0.65 }, // C6
+      ];
+
+      notes.forEach(({ freq, start, dur }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + start);
+
+        gain.gain.setValueAtTime(0, now + start);
+        gain.gain.linearRampToValueAtTime(0.16, now + start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + start);
+        osc.stop(now + start + dur);
+      });
+    } catch {
+      // Silently handle
+    }
+  }
 }
 
 export const soundService = new SoundEngine();
