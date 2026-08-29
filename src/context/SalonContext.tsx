@@ -12,6 +12,9 @@ import {
   Especialidad,
   UsuarioSesion,
   AdministradorAdicional,
+  Producto,
+  TransaccionFinanciera,
+  MetodoPago,
 } from '@/types/salon';
 import {
   CONFIG_INICIAL,
@@ -20,6 +23,8 @@ import {
   CITAS_INICIALES,
   BLOQUEOS_INICIALES,
   ESPECIALIDADES_INICIALES,
+  PRODUCTOS_INICIALES,
+  TRANSACCIONES_INICIALES,
   generarPasswordPorDefecto,
 } from '@/lib/seedData';
 import { soundService } from '@/lib/sound';
@@ -55,6 +60,8 @@ interface SalonContextType {
   especialidades: Especialidad[];
   bloqueos: BloqueoDisponibilidad[];
   configuracion: ConfiguracionSalon;
+  productos: Producto[];
+  transacciones: TransaccionFinanciera[];
   isFirebaseConnected: boolean;
   isOnline: boolean;
   pendingSyncCount: number;
@@ -118,6 +125,18 @@ interface SalonContextType {
     nuevaHoraFin?: string,
     nuevoColaboradorId?: string
   ) => Promise<void>;
+  guardarProducto: (producto: Producto) => Promise<void>;
+  eliminarProducto: (id: string) => Promise<void>;
+  venderProducto: (venta: {
+    productoId: string;
+    cantidad: number;
+    colaboradorId?: string;
+    metodoPago: MetodoPago;
+    notas?: string;
+  }) => Promise<void>;
+  registrarTransaccion: (transaccion: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => Promise<void>;
+  eliminarTransaccion: (id: string) => Promise<void>;
+  liquidarColaborador: (liquidacion: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => Promise<void>;
   actualizarConfiguracion: (nuevaConfig: Partial<ConfiguracionSalon>) => Promise<void>;
   resetearADatosPorDefecto: () => void;
 }
@@ -136,6 +155,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   const [especialidades, setEspecialidades] = useState<Especialidad[]>(ESPECIALIDADES_INICIALES);
   const [bloqueos, setBloqueos] = useState<BloqueoDisponibilidad[]>(BLOQUEOS_INICIALES);
   const [configuracion, setConfiguracion] = useState<ConfiguracionSalon>(CONFIG_INICIAL);
+  const [productos, setProductos] = useState<Producto[]>(PRODUCTOS_INICIALES);
+  const [transacciones, setTransacciones] = useState<TransaccionFinanciera[]>(TRANSACCIONES_INICIALES);
   const [usuarioSesion, setUsuarioSesion] = useState<UsuarioSesion | null>(null);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -192,7 +213,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
   const persistirAccion = useCallback(
     async (
       tipo: 'set' | 'delete',
-      coleccion: 'citas' | 'servicios' | 'colaboradores' | 'bloqueos' | 'configuracion',
+      coleccion: 'citas' | 'servicios' | 'colaboradores' | 'bloqueos' | 'configuracion' | 'productos' | 'transacciones',
       docId: string,
       datos?: any
     ) => {
@@ -333,6 +354,26 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      const storedProds = localStorage.getItem(STORAGE_KEYS.PRODUCTOS);
+      if (storedProds) {
+        try {
+          const pList = JSON.parse(storedProds);
+          if (Array.isArray(pList) && pList.length > 0) setProductos(pList);
+        } catch {
+          // ignore
+        }
+      }
+
+      const storedTxs = localStorage.getItem(STORAGE_KEYS.TRANSACCIONES);
+      if (storedTxs) {
+        try {
+          const txList = JSON.parse(storedTxs);
+          if (Array.isArray(txList) && txList.length > 0) setTransacciones(txList);
+        } catch {
+          // ignore
+        }
+      }
+
       let citasCargadas = CITAS_INICIALES;
       const storedCitas = localStorage.getItem(STORAGE_KEYS.CITAS);
       if (storedCitas) {
@@ -465,6 +506,24 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(items));
     });
 
+    const unsubProd = onSnapshot(collection(db, 'productos'), (snapshot) => {
+      if (!snapshot.empty) {
+        const items: Producto[] = [];
+        snapshot.forEach((d) => items.push({ id: d.id, ...d.data() } as Producto));
+        setProductos(items);
+        localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(items));
+      }
+    });
+
+    const unsubTx = onSnapshot(collection(db, 'transacciones'), (snapshot) => {
+      if (!snapshot.empty) {
+        const items: TransaccionFinanciera[] = [];
+        snapshot.forEach((d) => items.push({ id: d.id, ...d.data() } as TransaccionFinanciera));
+        setTransacciones(items);
+        localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(items));
+      }
+    });
+
     const unsubConfig = onSnapshot(doc(db, 'configuracion', 'general'), (docSnap) => {
       if (docSnap.exists()) {
         const confData = docSnap.data() as ConfiguracionSalon;
@@ -473,7 +532,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq, unsubConfig];
+    unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq, unsubProd, unsubTx, unsubConfig];
   };
 
   // Autenticación inteligente sin usuario
@@ -779,6 +838,41 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     const target = updated.find((c) => c.id === id);
     if (target) {
       await persistirAccion('set', 'citas', id, target);
+
+      // Si la cita fue Completada, registrar automáticamente en el Libro Diario contable
+      if (nuevoEstado === 'Completada') {
+        const existeTx = transacciones.some((t) => t.citaId === id);
+        if (!existeTx) {
+          const taxRate = configuracion.impuestoPorcentaje || 7.0;
+          const totalCobrado = target.precioTotal || 0;
+          const baseImponible = parseFloat((totalCobrado / (1 + taxRate / 100)).toFixed(2));
+          const impuestoCalculado = parseFloat((totalCobrado - baseImponible).toFixed(2));
+          const colab = colaboradores.find((c) => c.id === target.terapeutaId || c.id === target.colaboradorId);
+
+          const autoTx: TransaccionFinanciera = {
+            id: `tx-cita-${target.id}`,
+            tipo: 'ingreso_servicio',
+            descripcion: `Servicio completado: ${target.clienteNombre} (${target.codigo})`,
+            montoBruto: baseImponible,
+            impuestoMonto: impuestoCalculado,
+            montoTotal: totalCobrado,
+            impuestoPorcentaje: taxRate,
+            categoria: 'servicios',
+            fecha: target.fecha,
+            hora: target.horaInicio,
+            metodoPago: 'efectivo',
+            colaboradorId: colab?.id,
+            colaboradorNombre: colab?.nombre,
+            citaId: target.id,
+            creadoEn: new Date().toISOString(),
+          };
+
+          const newTxs = [autoTx, ...transacciones];
+          setTransacciones(newTxs);
+          localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(newTxs));
+          await persistirAccion('set', 'transacciones', autoTx.id, autoTx);
+        }
+      }
     }
   };
 
@@ -989,6 +1083,110 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Gestión de Inventario
+  const guardarProducto = async (producto: Producto) => {
+    const existe = productos.some((p) => p.id === producto.id);
+    let updated: Producto[];
+    if (existe) {
+      updated = productos.map((p) => (p.id === producto.id ? { ...producto, actualizadoEn: new Date().toISOString() } : p));
+    } else {
+      updated = [producto, ...productos];
+    }
+    setProductos(updated);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(updated));
+    await persistirAccion('set', 'productos', producto.id, producto);
+  };
+
+  const eliminarProducto = async (id: string) => {
+    const updated = productos.filter((p) => p.id !== id);
+    setProductos(updated);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(updated));
+    await persistirAccion('delete', 'productos', id);
+  };
+
+  const venderProducto = async (venta: {
+    productoId: string;
+    cantidad: number;
+    colaboradorId?: string;
+    metodoPago: MetodoPago;
+    notas?: string;
+  }) => {
+    const prod = productos.find((p) => p.id === venta.productoId);
+    if (!prod) throw new Error('Producto no encontrado');
+    if (prod.stock < venta.cantidad) throw new Error(`Stock insuficiente. Disponible: ${prod.stock}`);
+
+    // 1. Descontar Stock
+    const stockNuevo = Math.max(0, prod.stock - venta.cantidad);
+    const prodActualizado: Producto = {
+      ...prod,
+      stock: stockNuevo,
+      actualizadoEn: new Date().toISOString(),
+    };
+    const productosActualizados = productos.map((p) => (p.id === prod.id ? prodActualizado : p));
+    setProductos(productosActualizados);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(productosActualizados));
+    await persistirAccion('set', 'productos', prod.id, prodActualizado);
+
+    // 2. Calcular montos e impuesto (ej. 7% ITBMS)
+    const taxRate = configuracion.impuestoPorcentaje || 7.0;
+    const totalVenta = prod.precioVenta * venta.cantidad;
+    const baseImponible = parseFloat((totalVenta / (1 + taxRate / 100)).toFixed(2));
+    const impuestoCalculado = parseFloat((totalVenta - baseImponible).toFixed(2));
+
+    const colab = colaboradores.find((c) => c.id === venta.colaboradorId);
+
+    const nuevaTx: TransaccionFinanciera = {
+      id: `tx-prod-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tipo: 'ingreso_producto',
+      descripcion: `Venta mostrador: ${venta.cantidad}x ${prod.nombre}${venta.notas ? ` (${venta.notas})` : ''}`,
+      montoBruto: baseImponible,
+      impuestoMonto: impuestoCalculado,
+      montoTotal: totalVenta,
+      impuestoPorcentaje: taxRate,
+      categoria: prod.categoria || 'productos',
+      fecha: new Date().toISOString().split('T')[0],
+      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      metodoPago: venta.metodoPago,
+      colaboradorId: colab?.id,
+      colaboradorNombre: colab?.nombre,
+      productoId: prod.id,
+      cantidad: venta.cantidad,
+      creadoEn: new Date().toISOString(),
+    };
+
+    const transaccionesActualizadas = [nuevaTx, ...transacciones];
+    setTransacciones(transaccionesActualizadas);
+    localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(transaccionesActualizadas));
+    await persistirAccion('set', 'transacciones', nuevaTx.id, nuevaTx);
+  };
+
+  // Módulo Financiero
+  const registrarTransaccion = async (datos: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => {
+    const nuevaTx: TransaccionFinanciera = {
+      ...datos,
+      id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      creadoEn: new Date().toISOString(),
+    };
+    const updated = [nuevaTx, ...transacciones];
+    setTransacciones(updated);
+    localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(updated));
+    await persistirAccion('set', 'transacciones', nuevaTx.id, nuevaTx);
+  };
+
+  const eliminarTransaccion = async (id: string) => {
+    const updated = transacciones.filter((t) => t.id !== id);
+    setTransacciones(updated);
+    localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(updated));
+    await persistirAccion('delete', 'transacciones', id);
+  };
+
+  const liquidarColaborador = async (liquidacion: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => {
+    await registrarTransaccion({
+      ...liquidacion,
+      tipo: 'egreso_nomina',
+    });
+  };
+
   // Actualizar Configuración
   const actualizarConfiguracion = async (nuevaConfig: Partial<ConfiguracionSalon>) => {
     const updated: ConfiguracionSalon = { ...configuracion, ...nuevaConfig };
@@ -1014,6 +1212,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEYS.COLABORADORES, JSON.stringify(COLABORADORES_INICIALES));
     localStorage.setItem(STORAGE_KEYS.ESPECIALIDADES, JSON.stringify(ESPECIALIDADES_INICIALES));
     localStorage.setItem(STORAGE_KEYS.BLOQUEOS, JSON.stringify(BLOQUEOS_INICIALES));
+    localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(PRODUCTOS_INICIALES));
+    localStorage.setItem(STORAGE_KEYS.TRANSACCIONES, JSON.stringify(TRANSACCIONES_INICIALES));
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(CONFIG_INICIAL));
     sessionStorage.removeItem(STORAGE_KEYS.SESION);
 
@@ -1022,6 +1222,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     setColaboradores(COLABORADORES_INICIALES);
     setEspecialidades(ESPECIALIDADES_INICIALES);
     setBloqueos(BLOQUEOS_INICIALES);
+    setProductos(PRODUCTOS_INICIALES);
+    setTransacciones(TRANSACCIONES_INICIALES);
     setConfiguracion(CONFIG_INICIAL);
     setUsuarioSesion(null);
   };
@@ -1036,6 +1238,8 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         especialidades,
         bloqueos,
         configuracion,
+        productos,
+        transacciones,
         isFirebaseConnected,
         isOnline,
         pendingSyncCount,
@@ -1070,6 +1274,12 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         desbloquearTodoElDia,
         reprogramarBloqueo,
         reprogramarCita,
+        guardarProducto,
+        eliminarProducto,
+        venderProducto,
+        registrarTransaccion,
+        eliminarTransaccion,
+        liquidarColaborador,
         actualizarConfiguracion,
         resetearADatosPorDefecto,
       }}

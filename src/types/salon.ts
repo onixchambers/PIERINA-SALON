@@ -108,6 +108,70 @@ export interface BloqueoDisponibilidad {
   creadoEn: string;
 }
 
+export interface Producto {
+  id: string;
+  sku: string;
+  nombre: string;
+  categoria: string;
+  imagenUrl?: string | null;
+  precioCosto: number;
+  precioVenta: number;
+  stock: number;
+  stockMinimo: number;
+  activo: boolean;
+  creadoEn: string;
+  actualizadoEn?: string;
+}
+
+export type TipoTransaccion =
+  | 'ingreso_servicio'
+  | 'ingreso_producto'
+  | 'egreso_mantenimiento'
+  | 'egreso_insumos'
+  | 'egreso_servicios_publicos'
+  | 'egreso_nomina'
+  | 'egreso_otro';
+
+export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'yappy_nequi';
+
+export interface TransaccionFinanciera {
+  id: string;
+  tipo: TipoTransaccion;
+  descripcion: string;
+  montoBruto: number; // Base imponible
+  impuestoMonto: number; // Impuesto (ej. 7% ITBMS)
+  montoTotal: number; // Total cobrado o pagado
+  impuestoPorcentaje: number; // Porcentaje aplicado
+  categoria: string;
+  fecha: string; // YYYY-MM-DD
+  hora: string; // HH:mm
+  metodoPago: MetodoPago;
+  colaboradorId?: string;
+  colaboradorNombre?: string;
+  citaId?: string;
+  productoId?: string;
+  cantidad?: number;
+  creadoEn: string;
+}
+
+export interface LiquidacionColaborador {
+  colaboradorId: string;
+  colaboradorNombre: string;
+  periodoInicio: string;
+  periodoFin: string;
+  totalServicios: number;
+  montoServicios: number;
+  comisionServiciosMonto: number;
+  totalProductos: number;
+  montoProductos: number;
+  comisionProductosMonto: number;
+  salarioBase: number;
+  deducciones: number;
+  totalLiquidacion: number;
+  pagado: boolean;
+  fechaPago?: string;
+}
+
 export interface ConfiguracionSalon {
   nombreSalon: string;
   eslogan: string;
@@ -126,6 +190,16 @@ export interface ConfiguracionSalon {
   maxAdministradores?: number; // Límite máximo de administradores adicionales (1 a 50) configurado por el superusuario
   zonaHoraria?: string; // Huso horario del salón (por defecto "America/Panama")
   especialidades?: Especialidad[];
+  
+  // Módulo Empresarial: Inventario & Finanzas (Feature Toggle)
+  moduloInventarioYFinanzasActivo?: boolean;
+  impuestoPorcentaje?: number; // Por defecto 7.00% (ITBMS Panamá) o configurable
+  nombreImpuesto?: string; // Por defecto "ITBMS (7%)"
+  comisionServiciosPorcentaje?: number; // Por defecto 50%
+  comisionProductosPorcentaje?: number; // Por defecto 10%
+  salarioBasePredeterminado?: number; // Por defecto 0.00
+  esquemaNominaDefault?: 'comision' | 'salario_fijo' | 'mixto';
+
   firebaseConfig?: {
     apiKey?: string;
     authDomain?: string;

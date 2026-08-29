@@ -29,6 +29,13 @@ import {
   DollarSign,
   Users,
   ShieldCheck,
+  Package,
+  Calculator,
+  Percent,
+  TrendingUp,
+  Landmark,
+  Coins,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { soundService } from '@/lib/sound';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
@@ -70,6 +77,22 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
   const [alertaSonora, setAlertaSonora] = useState(configuracion.alertaSonoraActiva);
   const [zonaHoraria, setZonaHoraria] = useState(configuracion.zonaHoraria || 'America/Panama');
 
+  // Módulo Empresarial: Inventario & Finanzas
+  const [moduloInventarioYFinanzas, setModuloInventarioYFinanzas] = useState(
+    configuracion.moduloInventarioYFinanzasActivo || false
+  );
+  const [impuestoPorcentaje, setImpuestoPorcentaje] = useState(
+    configuracion.impuestoPorcentaje !== undefined ? configuracion.impuestoPorcentaje : 7.0
+  );
+  const [nombreImpuesto, setNombreImpuesto] = useState(configuracion.nombreImpuesto || 'ITBMS (7%)');
+  const [comisionServicios, setComisionServicios] = useState(
+    configuracion.comisionServiciosPorcentaje !== undefined ? configuracion.comisionServiciosPorcentaje : 50
+  );
+  const [comisionProductos, setComisionProductos] = useState(
+    configuracion.comisionProductosPorcentaje !== undefined ? configuracion.comisionProductosPorcentaje : 10
+  );
+  const [salarioBase, setSalarioBase] = useState(configuracion.salarioBasePredeterminado || 0);
+
   // Nueva Especialidad
   const [nuevaEspNombre, setNuevaEspNombre] = useState('');
 
@@ -96,6 +119,18 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       setIntervaloMinutos(configuracion.intervaloMinutos);
       setAlertaSonora(configuracion.alertaSonoraActiva);
       setZonaHoraria(configuracion.zonaHoraria || 'America/Panama');
+      setModuloInventarioYFinanzas(configuracion.moduloInventarioYFinanzasActivo || false);
+      setImpuestoPorcentaje(
+        configuracion.impuestoPorcentaje !== undefined ? configuracion.impuestoPorcentaje : 7.0
+      );
+      setNombreImpuesto(configuracion.nombreImpuesto || 'ITBMS (7%)');
+      setComisionServicios(
+        configuracion.comisionServiciosPorcentaje !== undefined ? configuracion.comisionServiciosPorcentaje : 50
+      );
+      setComisionProductos(
+        configuracion.comisionProductosPorcentaje !== undefined ? configuracion.comisionProductosPorcentaje : 10
+      );
+      setSalarioBase(configuracion.salarioBasePredeterminado || 0);
       setFbApiKey(configuracion.firebaseConfig?.apiKey || '');
       setFbProjectId(configuracion.firebaseConfig?.projectId || '');
       setFbAppId(configuracion.firebaseConfig?.appId || '');
@@ -152,6 +187,12 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       pinAdmin: configuracion.pinAdmin || 'pierina123',
       alertaSonoraActiva: alertaSonora,
       zonaHoraria: zonaHoraria || 'America/Panama',
+      moduloInventarioYFinanzasActivo: esSuperAdmin ? moduloInventarioYFinanzas : configuracion.moduloInventarioYFinanzasActivo,
+      impuestoPorcentaje: esSuperAdmin ? (Number(impuestoPorcentaje) || 0) : configuracion.impuestoPorcentaje,
+      nombreImpuesto: nombreImpuesto.trim() || 'ITBMS (7%)',
+      comisionServiciosPorcentaje: esSuperAdmin ? (Number(comisionServicios) || 0) : configuracion.comisionServiciosPorcentaje,
+      comisionProductosPorcentaje: esSuperAdmin ? (Number(comisionProductos) || 0) : configuracion.comisionProductosPorcentaje,
+      salarioBasePredeterminado: esSuperAdmin ? (Number(salarioBase) || 0) : configuracion.salarioBasePredeterminado,
       firebaseConfig: esSuperAdmin && fbApiKey && fbProjectId ? {
         apiKey: fbApiKey.trim(),
         projectId: fbProjectId.trim(),
@@ -632,6 +673,192 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
                 <span>Administradores creados: <strong>{configuracion.administradores?.length || 0}</strong></span>
                 <span>Cupos disponibles: <strong>{Math.max(0, maxAdministradores - (configuracion.administradores?.length || 0))}</strong> libres</span>
               </div>
+            </div>
+          )}
+
+          {/* FEATURE TOGGLE: MÓDULO EMPRESARIAL INVENTARIO, POS & FINANZAS (EXCLUSIVO SUPERUSUARIO) */}
+          {esSuperAdmin && (
+            <div className="rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/60 p-4.5 space-y-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-xs shrink-0">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                        Módulo Empresarial: Inventario & Finanzas Contables
+                      </h4>
+                      <span className="rounded-md bg-emerald-200/80 border border-emerald-300 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+                        👑 Superusuario
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-900/80 mt-1 leading-relaxed">
+                      Al mover el interruptor hacia la derecha, se habilitarán en la barra superior junto a <em>"Cambiar Mi Contraseña"</em> los botones de acceso directo a <strong>📦 Inventario</strong> y <strong>💰 Finanzas</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* SWITCH INTERACTIVO (MOVE TO RIGHT TO ACTIVATE) */}
+                <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-2 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={moduloInventarioYFinanzas}
+                    onChange={(e) => setModuloInventarioYFinanzas(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-14 h-7 bg-stone-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
+                </label>
+              </div>
+
+              {/* Parámetros Contables y Fiscales cuando está activo */}
+              {moduloInventarioYFinanzas && (
+                <div className="mt-3 rounded-xl bg-white/90 p-3.5 border border-emerald-200 space-y-4 animate-in fade-in duration-200">
+                  {/* Impuesto Editable y Presets Multipaís */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#2D2424] flex items-center gap-1.5">
+                        <Landmark className="h-4 w-4 text-emerald-700" />
+                        <span>Parametrización Fiscal (Impuesto por Defecto):</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                        Actualmente: {impuestoPorcentaje}% ({nombreImpuesto})
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5A4D48] mb-1">
+                          Porcentaje de Impuesto (%):
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            max={100}
+                            value={impuestoPorcentaje}
+                            onChange={(e) => setImpuestoPorcentaje(Number(e.target.value))}
+                            className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2.5 pr-8 text-xs font-bold text-[#2D2424] focus:border-emerald-600 focus:bg-white focus:outline-hidden"
+                            placeholder="7.00"
+                          />
+                          <Percent className="absolute right-3 top-3 h-3.5 w-3.5 text-[#8C7A70]" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5A4D48] mb-1">
+                          Nombre del Impuesto / Título:
+                        </label>
+                        <input
+                          type="text"
+                          value={nombreImpuesto}
+                          onChange={(e) => setNombreImpuesto(e.target.value)}
+                          className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2.5 text-xs font-semibold text-[#2D2424] focus:border-emerald-600 focus:bg-white focus:outline-hidden"
+                          placeholder="ITBMS (7%) o IVA (16%)"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Presets Rápidos Internacionales */}
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A70] block mb-1">
+                        Ajustes Rápidos por País:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '🇵🇦 Panamá (7% ITBMS)', pct: 7, name: 'ITBMS (7%)' },
+                          { label: '🇺🇸 EE.UU. (0% Exento)', pct: 0, name: 'Tax Free (0%)' },
+                          { label: '🇲🇽 México (16% IVA)', pct: 16, name: 'IVA (16%)' },
+                          { label: '🇨🇴 Colombia (19% IVA)', pct: 19, name: 'IVA (19%)' },
+                          { label: '🇪🇸 España (21% IVA)', pct: 21, name: 'IVA (21%)' },
+                          { label: '🇨🇱 Chile (19% IVA)', pct: 19, name: 'IVA (19%)' },
+                          { label: '🇵🇪 Perú (18% IGV)', pct: 18, name: 'IGV (18%)' },
+                          { label: '🇨🇷 Costa Rica (13% IVA)', pct: 13, name: 'IVA (13%)' },
+                          { label: '🇩🇴 Rep. Dom. (18% ITBIS)', pct: 18, name: 'ITBIS (18%)' },
+                        ].map((pais) => (
+                          <button
+                            key={pais.label}
+                            type="button"
+                            onClick={() => {
+                              setImpuestoPorcentaje(pais.pct);
+                              setNombreImpuesto(pais.name);
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold border transition cursor-pointer ${
+                              impuestoPorcentaje === pais.pct
+                                ? 'border-emerald-600 bg-emerald-100 text-emerald-900 font-bold shadow-2xs'
+                                : 'border-[#EAE0D5] bg-[#FAF6F0] text-[#5A4D48] hover:bg-white'
+                            }`}
+                          >
+                            {pais.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Esquema de Comisiones y Compensación */}
+                  <div className="border-t border-emerald-100 pt-3 space-y-2">
+                    <label className="text-xs font-bold text-[#2D2424] flex items-center gap-1.5">
+                      <Coins className="h-4 w-4 text-emerald-700" />
+                      <span>Liquidación y Comisiones de Colaboradoras:</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5A4D48] mb-1">
+                          Comisión por Servicios (%):
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={comisionServicios}
+                            onChange={(e) => setComisionServicios(Number(e.target.value))}
+                            className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2 text-xs font-bold text-[#2D2424]"
+                          />
+                          <Percent className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-[#8C7A70]" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5A4D48] mb-1">
+                          Comisión por Productos (%):
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={comisionProductos}
+                            onChange={(e) => setComisionProductos(Number(e.target.value))}
+                            className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2 text-xs font-bold text-[#2D2424]"
+                          />
+                          <Percent className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-[#8C7A70]" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5A4D48] mb-1">
+                          Salario Base Predeterminado:
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            value={salarioBase}
+                            onChange={(e) => setSalarioBase(Number(e.target.value))}
+                            className="w-full rounded-xl border border-[#E6D7CB] bg-[#FAF6F0] p-2 pl-6 text-xs font-bold text-[#2D2424]"
+                            placeholder="0.00"
+                          />
+                          <span className="absolute left-2.5 top-2 text-xs font-bold text-[#8C7A70]">{moneda}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

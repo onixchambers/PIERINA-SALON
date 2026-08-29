@@ -10,6 +10,8 @@ import ServicesManagerModal from '@/components/admin/ServicesManagerModal';
 import CollaboratorsManagerModal from '@/components/admin/CollaboratorsManagerModal';
 import SalonSettingsModal from '@/components/admin/SalonSettingsModal';
 import AppointmentDetailModal from '@/components/admin/AppointmentDetailModal';
+import InventoryManagerModal from '@/components/admin/InventoryManagerModal';
+import FinancesManagerModal from '@/components/admin/FinancesManagerModal';
 import { useSalon } from '@/context/SalonContext';
 import { Cita, Servicio } from '@/types/salon';
 import {
@@ -32,6 +34,8 @@ import {
   Upload,
   Trash2,
   ImageIcon,
+  Package,
+  DollarSign,
 } from 'lucide-react';
 import PhoneInputWithCountry from '@/components/common/PhoneInputWithCountry';
 import { detectarPaisUsuario } from '@/lib/countryDetection';
@@ -69,6 +73,8 @@ export default function AdminPage() {
   const [modalServices, setModalServices] = useState(false);
   const [modalTherapists, setModalTherapists] = useState(false);
   const [modalSettings, setModalSettings] = useState(false);
+  const [modalInventario, setModalInventario] = useState(false);
+  const [modalFinanzas, setModalFinanzas] = useState(false);
   const [modalNewAppointment, setModalNewAppointment] = useState(false);
   const [modalCambiarPin, setModalCambiarPin] = useState(false);
   const [pinActualInput, setPinActualInput] = useState('');
@@ -430,7 +436,32 @@ export default function AdminPage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          {/* Módulo Empresarial de Inventario & Finanzas (Habilitado en Ajustes de Superusuario) */}
+          {configuracion.moduloInventarioYFinanzasActivo && (
+            <>
+              <button
+                type="button"
+                onClick={() => setModalInventario(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-purple-100/80 hover:bg-purple-200/80 px-3 py-1.5 text-xs font-bold text-purple-900 border border-purple-300 transition shadow-2xs cursor-pointer"
+                title="Gestión de Inventario de Productos y Punto de Venta (POS)"
+              >
+                <Package className="h-3.5 w-3.5 text-purple-700" />
+                <span>Inventario</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalFinanzas(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-100/80 hover:bg-emerald-200/80 px-3 py-1.5 text-xs font-bold text-emerald-950 border border-emerald-300 transition shadow-2xs cursor-pointer"
+                title="Módulo Financiero, Libro Diario Contable y Liquidación de Nómina"
+              >
+                <DollarSign className="h-3.5 w-3.5 text-emerald-700" />
+                <span>Finanzas</span>
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -521,6 +552,16 @@ export default function AdminPage() {
       <SalonSettingsModal
         isOpen={modalSettings}
         onClose={() => setModalSettings(false)}
+      />
+
+      <InventoryManagerModal
+        isOpen={modalInventario}
+        onClose={() => setModalInventario(false)}
+      />
+
+      <FinancesManagerModal
+        isOpen={modalFinanzas}
+        onClose={() => setModalFinanzas(false)}
       />
 
       <AppointmentDetailModal

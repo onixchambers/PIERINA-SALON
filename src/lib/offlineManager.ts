@@ -4,7 +4,7 @@ import { doc, setDoc, deleteDoc, Firestore } from 'firebase/firestore';
 export interface AccionSyncOffline {
   id: string;
   tipo: 'set' | 'delete';
-  coleccion: 'citas' | 'servicios' | 'colaboradores' | 'bloqueos' | 'configuracion';
+  coleccion: 'citas' | 'servicios' | 'colaboradores' | 'bloqueos' | 'configuracion' | 'productos' | 'transacciones';
   docId: string;
   datos?: any;
   timestamp: number;
@@ -17,6 +17,8 @@ export const STORAGE_KEYS = {
   ESPECIALIDADES: 'pierina_especialidades_v1',
   BLOQUEOS: 'pierina_bloqueos_v1',
   CONFIG: 'pierina_config_v1',
+  PRODUCTOS: 'pierina_productos_v1',
+  TRANSACCIONES: 'pierina_transacciones_v1',
   SESION: 'pierina_usuario_sesion',
   OFFLINE_QUEUE: 'pierina_offline_sync_queue_v1',
   ULTIMA_LIMPIEZA: 'pierina_last_storage_cleanup_v1',
