@@ -5,7 +5,7 @@ import { useSalon } from '@/context/SalonContext';
 import { WifiOff, RefreshCw, CheckCircle2, CloudUpload, HardDriveDownload } from 'lucide-react';
 
 export default function OfflineSyncBanner() {
-  const { isOnline, pendingSyncCount, isSyncingOffline } = useSalon();
+  const { isOnline, pendingSyncCount, isSyncingOffline, forzarSincronizacionOffline } = useSalon();
   const [mostrarExito, setMostrarExito] = useState(false);
   const [ultimoEstadoOnline, setUltimoEstadoOnline] = useState(isOnline);
 
@@ -35,7 +35,7 @@ export default function OfflineSyncBanner() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                  Modo Fuera de Línea
+                  Modo Fuera de Línea (Activo)
                 </span>
                 {pendingSyncCount > 0 && (
                   <span className="rounded-full bg-amber-200 px-2 py-0.2 text-[10px] font-bold text-amber-900">
@@ -44,10 +44,37 @@ export default function OfflineSyncBanner() {
                 )}
               </div>
               <p className="text-[11px] text-amber-800 truncate">
-                Guardando en tu equipo. Se subirá automáticamente al volver internet.
+                Tus cambios se guardan localmente y se sincronizarán al volver internet.
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Banner con cambios pendientes y conexión disponible */}
+      {isOnline && pendingSyncCount > 0 && !isSyncingOffline && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-blue-300/80 bg-blue-50/95 backdrop-blur-md px-4 py-2.5 shadow-lg shadow-blue-900/10 text-blue-950">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+              <CloudUpload className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                {pendingSyncCount} {pendingSyncCount === 1 ? 'cambio pendiente' : 'cambios pendientes'}
+              </span>
+              <p className="text-[11px] text-blue-800 truncate">
+                Listo para sincronizar con la base de datos en la nube.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => forzarSincronizacionOffline()}
+            className="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer shadow-xs"
+          >
+            <RefreshCw className="h-3 w-3" />
+            <span>Sincronizar</span>
+          </button>
         </div>
       )}
 

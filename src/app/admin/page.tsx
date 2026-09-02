@@ -54,6 +54,7 @@ export default function AdminPage() {
     cambiarPinColaborador,
     actualizarFotoColaborador,
     cambiarPinAdmin,
+    actualizarConfiguracion,
     crearCita,
   } = useSalon();
 
@@ -65,7 +66,9 @@ export default function AdminPage() {
   // Estados del Calendario y Navegación
   const [fechaActual, setFechaActual] = useState(new Date().toISOString().split('T')[0]);
   const [vista, setVista] = useState<VistaCalendario>('dia');
-  const [filtroColaborador, setFiltroColaborador] = useState<string>('all'); // 'all' o ID específico
+  const [filtroColaborador, setFiltroColaborador] = useState<string>(
+    usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId ? usuarioSesion.colaboradorId : 'all'
+  ); // 'all' o ID específico de la colaboradora
 
   // Modales
   const [modalPending, setModalPending] = useState(false);
@@ -104,6 +107,15 @@ export default function AdminPage() {
   const miColaboradorId = usuarioSesion?.colaboradorId;
   const colabActiva = colaboradores.find((c) => c.id === miColaboradorId);
 
+  // Al iniciar sesión o detectar rol de colaboradora, por defecto mostrar SOLO su agenda
+  React.useEffect(() => {
+    if (usuarioSesion?.tipo === 'colaborador' && usuarioSesion.colaboradorId) {
+      setFiltroColaborador(usuarioSesion.colaboradorId);
+    } else {
+      setFiltroColaborador('all');
+    }
+  }, [usuarioSesion?.tipo, usuarioSesion?.colaboradorId]);
+
   const handleLoginPin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorPin(false);
@@ -112,6 +124,11 @@ export default function AdminPage() {
     const res = loginPorPin(pinIngresado);
     if (res.exito && res.sesion) {
       setPinIngresado('');
+      if (res.sesion.tipo === 'colaborador' && res.sesion.colaboradorId) {
+        setFiltroColaborador(res.sesion.colaboradorId);
+      } else {
+        setFiltroColaborador('all');
+      }
     } else {
       setErrorPin(true);
       setErrorMensaje(res.errorMotivo || 'Contraseña incorrecta.');
@@ -218,8 +235,8 @@ export default function AdminPage() {
       }
     } else {
       // Administrador
-      const adminPin = (configuracion.pinAdmin || 'pierina123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const adminMatch = actualMin === adminPin || configuracion.administradores?.some((a) => {
+      const adminPin = (configuracion.pinAdmin || 'admin123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const adminMatch = actualMin === adminPin || actualMin === 'admin123' || configuracion.administradores?.some((a) => {
         const aPin = (a.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         return aPin === actualMin && a.nombre === usuarioSesion?.nombre;
       });

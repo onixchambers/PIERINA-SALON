@@ -14,10 +14,10 @@ import {
  * Primer nombre en minúsculas sin acentos + "123" (ej. "Valentina Ramos" -> "valentina123")
  */
 export function generarPasswordPorDefecto(nombre: string): string {
-  if (!nombre || !nombre.trim()) return 'pierina123';
+  if (!nombre || !nombre.trim()) return 'colab123';
   const primerNombre = nombre.trim().split(' ')[0].toLowerCase();
   const limpio = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-  return `${limpio || 'pierina'}123`;
+  return `${limpio || 'colab'}123`;
 }
 
 export const ESPECIALIDADES_INICIALES: Especialidad[] = [
@@ -38,7 +38,7 @@ export const CONFIG_INICIAL: ConfiguracionSalon = {
   horarioApertura: '08:00',
   horarioCierre: '23:00',
   intervaloMinutos: 30,
-  pinAdmin: 'pierina123',
+  pinAdmin: 'admin123',
   pinSuperAdmin: 'onix1974',
   administradores: [],
   alertaSonoraActiva: true,
@@ -221,6 +221,33 @@ export const SERVICIOS_INICIALES: Servicio[] = [
 // Colaboradoras sin fotos ficticias (se visualizan con iniciales elegantes y permiten subir su propia foto real)
 export const COLABORADORES_INICIALES: Colaborador[] = [
   {
+    id: 'colab-pierina',
+    nombre: 'Pierina',
+    foto: null,
+    pin: 'pierina123',
+    passwordOriginal: 'pierina123',
+    especialidades: ['pestanas', 'unas', 'faciales'],
+    telefono: '+507 6123-4567',
+    color: '#B85D75',
+    activo: true,
+    accesoRestringido: false,
+    rol: 'colaborador',
+    biografia: 'Especialista en cejas, pestañas, manicura y tratamientos faciales de autor.',
+    serviciosAsignados: [
+      { servicioId: 'serv-p-1', precioPersonalizado: 520, activo: true },
+      { servicioId: 'serv-p-2', precioPersonalizado: 480, activo: true },
+      { servicioId: 'serv-u-1', precioPersonalizado: 480, activo: true },
+      { servicioId: 'serv-f-1', precioPersonalizado: 850, activo: true },
+    ],
+    horarioBase: {
+      dias: [1, 2, 3, 4, 5, 6],
+      horaInicio: '08:00',
+      horaFin: '20:00',
+      descansoInicio: '13:00',
+      descansoFin: '14:00',
+    },
+  },
+  {
     id: 'colab-1',
     nombre: 'Valentina Ramos',
     foto: null, // Sin foto ficticia -> avatar monograma con opción a subir foto real
@@ -231,6 +258,7 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     color: '#E07A5F',
     activo: true,
     accesoRestringido: false,
+    rol: 'colaborador',
     biografia: 'Especialista en Manicura Rusa, Soft Gel y diseño de miradas.',
     serviciosAsignados: [
       { servicioId: 'serv-u-1', precioPersonalizado: 480, activo: true },
@@ -258,6 +286,7 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     color: '#818CF8',
     activo: true,
     accesoRestringido: false,
+    rol: 'colaborador',
     biografia: 'Colorista y estilista en balayage francés y diseño de corte.',
     serviciosAsignados: [
       { servicioId: 'serv-c-1', precioPersonalizado: 550, activo: true },
@@ -283,6 +312,7 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     color: '#10B981',
     activo: true,
     accesoRestringido: false,
+    rol: 'colaborador',
     biografia: 'Cosmiatra en rejuvenecimiento facial y depilación láser.',
     serviciosAsignados: [
       { servicioId: 'serv-f-1', precioPersonalizado: 850, activo: true },
@@ -309,6 +339,7 @@ export const COLABORADORES_INICIALES: Colaborador[] = [
     color: '#F59E0B',
     activo: true,
     accesoRestringido: false,
+    rol: 'colaborador',
     biografia: 'Especialista en masoterapia descontracturante y spa.',
     serviciosAsignados: [
       { servicioId: 'serv-m-1', precioPersonalizado: 790, activo: true },

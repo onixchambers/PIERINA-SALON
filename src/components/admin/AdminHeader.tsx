@@ -233,28 +233,32 @@ export default function AdminHeader({
         <div className="flex flex-wrap items-center gap-3">
           {/* Selector de Filtro de Colaboradora */}
           {esColaboradora && miColaboradorId ? (
-            <div className="flex rounded-xl bg-[#FAF6F0] p-1 border border-[#E6D7CB]">
-              <button
-                type="button"
-                onClick={() => setFiltroColaborador('all')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-                  filtroColaborador === 'all'
-                    ? 'bg-white text-[#B85D75] shadow-xs'
-                    : 'text-[#8C7A70] hover:text-[#2D2424]'
-                }`}
-              >
-                Todas las Colaboradoras
-              </button>
+            <div className="flex rounded-xl bg-[#FAF6F0] p-1 border border-[#E6D7CB] shadow-2xs">
               <button
                 type="button"
                 onClick={() => setFiltroColaborador(miColaboradorId)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                   filtroColaborador === miColaboradorId
-                    ? 'bg-white text-[#B85D75] shadow-xs'
+                    ? 'bg-white text-[#B85D75] shadow-xs border border-[#E8DCCF]'
                     : 'text-[#8C7A70] hover:text-[#2D2424]'
                 }`}
+                title="Mostrar únicamente mi columna y mis citas asignadas"
               >
-                Solo Mi Agenda ({usuarioSesion?.nombre.split(' ')[0]})
+                <span className="inline-block h-2 w-2 rounded-full bg-[#B85D75]"></span>
+                <span>Solo Mi Agenda ({usuarioSesion?.nombre.split(' ')[0]})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroColaborador('all')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                  filtroColaborador === 'all'
+                    ? 'bg-white text-[#B85D75] shadow-xs border border-[#E8DCCF]'
+                    : 'text-[#8C7A70] hover:text-[#2D2424]'
+                }`}
+                title="Mostrar el calendario general con todas las colaboradoras del salón"
+              >
+                <Users className="h-3.5 w-3.5 text-[#8C7A70]" />
+                <span>Todas las Colaboradoras</span>
               </button>
             </div>
           ) : (

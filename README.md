@@ -17,10 +17,13 @@ Desarrollada con **Next.js 15**, **React 19**, **Tailwind CSS v4**, **TypeScript
 - **Paso 5 - Seguimiento en Vivo (`/cita/[id]`):** Estado de la cita en tiempo real, enlace de WhatsApp directo con el salón, descarga de archivo `.ics` y sincronización con Google Calendar.
 
 ### 2. Portal de Colaboradoras & Administración (`/admin`)
-- **Detección Inteligente por Contraseña:** Un único formulario seguro de acceso que detecta automáticamente quién ingresa según la clave personal asignada:
-  - **Superadministrador:** Clave `onix1974` (creación de roles administrativos y control total)
-  - **Administradora General:** Clave configurada (por defecto `pierina123`)
-  - **Colaboradoras / Terapeutas:** Contraseña configurada por la colaboradora (por defecto `[nombre]123`, ej. `valentina123`)
+- **Detección Inteligente por Contraseña / Nombre:** Un único formulario seguro de acceso que detecta automáticamente quién ingresa según la clave personal o nombre asignado:
+  - **Superadministrador:** Clave `onix1974` (creación de roles administrativos, control total y límite de cupos)
+  - **Administradora General:** Clave configurada (por defecto `admin123` o `admin`)
+  - **Colaboradoras / Terapeutas:** Contraseña o nombre (por defecto `[nombre]123` o el nombre de la colaboradora, ej. `pierina` / `pierina123` para Pierina, `valentina` / `valentina123` para Valentina)
+- **Modo Offline Integral (Superusuario, Administrador y Colaboradoras):**
+  - Permite inicio de sesión, navegación y creación/gestión de citas, bloqueos, tarifas, inventario y finanzas aún sin conexión a internet.
+  - Guarda automáticamente los datos en el dispositivo (`localStorage`) y encola las acciones para sincronizarlas con Firebase Firestore apenas se recupere la conexión a internet.
 - **Gestión Exclusiva de Clientas:** Cada colaboradora visualiza y gestiona únicamente las solicitudes y citas de sus propias clientas.
 - **Cambio de Contraseña:** Cada colaboradora puede modificar su PIN personal en cualquier momento desde la barra superior.
 - **Calendario Multivista:** Vistas conmutables por **Día** (columnas por colaboradora), **Semana** y **Mes**.

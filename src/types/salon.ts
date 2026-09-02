@@ -63,6 +63,7 @@ export interface AdministradorAdicional {
 export interface UsuarioSesion {
   tipo: 'superadmin' | 'admin' | 'colaborador';
   colaboradorId?: string;
+  adminId?: string;
   nombre: string;
   foto?: string | null;
   esSuperAdmin?: boolean;

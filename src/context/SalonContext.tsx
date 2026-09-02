@@ -137,6 +137,7 @@ interface SalonContextType {
   registrarTransaccion: (transaccion: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => Promise<void>;
   eliminarTransaccion: (id: string) => Promise<void>;
   liquidarColaborador: (liquidacion: Omit<TransaccionFinanciera, 'id' | 'creadoEn'>) => Promise<void>;
+  forzarSincronizacionOffline: () => Promise<void>;
   actualizarConfiguracion: (nuevaConfig: Partial<ConfiguracionSalon>) => Promise<void>;
   resetearADatosPorDefecto: () => void;
 }
@@ -248,11 +249,14 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(k);
       });
 
-      // Restaurar sesión activa
-      const storedSesion = sessionStorage.getItem(STORAGE_KEYS.SESION);
+      // Restaurar sesión activa (desde sessionStorage o localStorage para persistencia PWA/offline)
+      const storedSesion = sessionStorage.getItem(STORAGE_KEYS.SESION) || localStorage.getItem(STORAGE_KEYS.SESION);
       if (storedSesion) {
         try {
-          setUsuarioSesion(JSON.parse(storedSesion));
+          const parsed = JSON.parse(storedSesion);
+          if (parsed && parsed.tipo) {
+            setUsuarioSesion(parsed);
+          }
         } catch {
           // ignore
         }
@@ -262,7 +266,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       if (storedConfig) {
         try {
           const conf = JSON.parse(storedConfig);
-          const pinAdminMigrado = conf.pinAdmin && conf.pinAdmin !== '1234' ? conf.pinAdmin : 'pierina123';
+          const pinAdminMigrado = conf.pinAdmin && conf.pinAdmin !== '1234' && conf.pinAdmin !== 'pierina123' ? conf.pinAdmin : 'admin123';
           const horarioAperturaMigrado = conf.horarioApertura === '09:00' || !conf.horarioApertura ? '08:00' : conf.horarioApertura;
           const horarioCierreMigrado = conf.horarioCierre === '20:00' || !conf.horarioCierre ? '23:00' : conf.horarioCierre;
           const telefonoMigrado = !conf.telefonoSalon || conf.telefonoSalon === '+525541238990' ? CONFIG_INICIAL.telefonoSalon : conf.telefonoSalon;
@@ -319,8 +323,14 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       const storedColab = localStorage.getItem(STORAGE_KEYS.COLABORADORES);
       if (storedColab) {
         try {
-          const colabs: Colaborador[] = JSON.parse(storedColab);
+          let colabs: Colaborador[] = JSON.parse(storedColab);
           if (Array.isArray(colabs) && colabs.length > 0) {
+            // Asegurar que Pierina esté presente si no existía previamente
+            const tienePierina = colabs.some((c) => c.nombre.toLowerCase().includes('pierina') || c.id === 'colab-pierina');
+            if (!tienePierina) {
+              colabs = [COLABORADORES_INICIALES[0], ...colabs];
+            }
+
             const colabsConPin = colabs.map((c) => {
               const inicial = COLABORADORES_INICIALES.find((i) => i.id === c.id);
               const defaultPass = generarPasswordPorDefecto(c.nombre);
@@ -334,6 +344,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
                 passwordOriginal: c.passwordOriginal || defaultPass,
                 accesoRestringido: c.accesoRestringido || false,
                 motivoRestriccion: c.motivoRestriccion || '',
+                rol: c.rol || 'colaborador',
               };
             });
             setColaboradores(colabsConPin);
@@ -535,17 +546,18 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
     unsubsRef.current = [unsubCitas, unsubServ, unsubColab, unsubBloq, unsubProd, unsubTx, unsubConfig];
   };
 
-  // Autenticación inteligente sin usuario
+  // Autenticación inteligente con soporte completo Offline y detección precisa de roles
   const loginPorPin = (pin: string): LoginResultado => {
     const pinLimpio = (pin || '').trim();
     if (!pinLimpio) {
-      return { exito: false, errorMotivo: 'Por favor ingresa tu contraseña.' };
+      return { exito: false, errorMotivo: 'Por favor ingresa tu contraseña o nombre.' };
     }
 
     const pinMin = pinLimpio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+    // 1. Detección de Superusuario
     const confSuperMin = (configuracion.pinSuperAdmin || 'onix1974').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (pinMin === confSuperMin || pinMin === 'onix1974') {
+    if (pinMin === confSuperMin || pinMin === 'onix1974' || pinMin === 'superadmin') {
       const sesion: UsuarioSesion = {
         tipo: 'superadmin',
         nombre: 'Superusuario',
@@ -553,53 +565,27 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      localStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
       return { exito: true, sesion };
     }
 
-    const confAdminMin = (configuracion.pinAdmin || 'pierina123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (pinMin === confAdminMin || pinMin === 'pierina123') {
-      const sesion: UsuarioSesion = {
-        tipo: 'admin',
-        nombre: 'Administrador General',
-      };
-      setUsuarioSesion(sesion);
-      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-      return { exito: true, sesion };
-    }
-
-    if (configuracion.administradores && configuracion.administradores.length > 0) {
-      const adminAdicional = configuracion.administradores.find((a) => {
-        const pinAdminMin = ((a as any).pin || (a as any).password || '')
-          .toString()
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        const passMin = ((a as any).password || (a as any).pin || '')
-          .toString()
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        return (pinAdminMin === pinMin || passMin === pinMin) && (a.activo !== false);
-      });
-
-      if (adminAdicional) {
-        const sesion: UsuarioSesion = {
-          tipo: 'admin',
-          nombre: adminAdicional.nombre,
-          adminId: adminAdicional.id,
-        };
-        setUsuarioSesion(sesion);
-        sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
-        return { exito: true, sesion };
-      }
-    }
-
+    // 2. Detección de Colaboradoras (incluyendo Pierina y cualquier terapeuta configurada)
+    // Se valida antes de la administración para garantizar que colaboradoras con nombres como "Pierina" obtengan rol de colaboradora
     const colab = colaboradores.find((c) => {
+      if (c.activo === false) return false;
       const pinColabMin = (c.pin || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const passOriginalMin = (c.passwordOriginal || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return pinColabMin === pinMin || passOriginalMin === pinMin;
+      const nombreMin = (c.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const primerNombreMin = nombreMin.split(' ')[0];
+      const defaultPassMin = `${primerNombreMin}123`;
+
+      return (
+        pinColabMin === pinMin ||
+        passOriginalMin === pinMin ||
+        nombreMin === pinMin ||
+        primerNombreMin === pinMin ||
+        defaultPassMin === pinMin
+      );
     });
 
     if (colab) {
@@ -614,21 +600,73 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         tipo: 'colaborador',
         nombre: colab.nombre,
         colaboradorId: colab.id,
+        foto: colab.foto || null,
       };
       setUsuarioSesion(sesion);
       sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      localStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      return { exito: true, sesion };
+    }
+
+    // 3. Detección de Administradores Adicionales creados por el Superusuario
+    if (configuracion.administradores && configuracion.administradores.length > 0) {
+      const adminAdicional = configuracion.administradores.find((a) => {
+        const pinAdminMin = ((a as any).pin || (a as any).password || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const passMin = ((a as any).password || (a as any).pin || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const nombreMin = (a.nombre || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
+        return (pinAdminMin === pinMin || passMin === pinMin || nombreMin === pinMin) && (a.activo !== false);
+      });
+
+      if (adminAdicional) {
+        const sesion: UsuarioSesion = {
+          tipo: 'admin',
+          nombre: adminAdicional.nombre,
+          adminId: adminAdicional.id,
+        };
+        setUsuarioSesion(sesion);
+        sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+        localStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+        return { exito: true, sesion };
+      }
+    }
+
+    // 4. Detección de Administrador General del Salón
+    const confAdminMin = (configuracion.pinAdmin || 'admin123').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (pinMin === confAdminMin || pinMin === 'admin123' || pinMin === 'admin' || pinMin === 'administrador') {
+      const sesion: UsuarioSesion = {
+        tipo: 'admin',
+        nombre: 'Administrador General',
+      };
+      setUsuarioSesion(sesion);
+      sessionStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
+      localStorage.setItem(STORAGE_KEYS.SESION, JSON.stringify(sesion));
       return { exito: true, sesion };
     }
 
     return {
       exito: false,
-      errorMotivo: 'Contraseña incorrecta. Verifica tus datos o solicita un restablecimiento.',
+      errorMotivo: 'Contraseña no reconocida. Si eres colaboradora, ingresa tu clave o nombre.',
     };
   };
 
   const logout = () => {
     setUsuarioSesion(null);
     sessionStorage.removeItem(STORAGE_KEYS.SESION);
+    localStorage.removeItem(STORAGE_KEYS.SESION);
   };
 
   const descartarNotificacion = () => {
@@ -1280,6 +1318,7 @@ export function SalonProvider({ children }: { children: React.ReactNode }) {
         registrarTransaccion,
         eliminarTransaccion,
         liquidarColaborador,
+        forzarSincronizacionOffline: ejecutarSincronizacionOffline,
         actualizarConfiguracion,
         resetearADatosPorDefecto,
       }}

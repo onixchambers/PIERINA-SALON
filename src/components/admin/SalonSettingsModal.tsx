@@ -184,7 +184,7 @@ export default function SalonSettingsModal({ isOpen, onClose }: SalonSettingsMod
       horarioApertura,
       horarioCierre,
       intervaloMinutos: Number(intervaloMinutos),
-      pinAdmin: configuracion.pinAdmin || 'pierina123',
+      pinAdmin: configuracion.pinAdmin || 'admin123',
       alertaSonoraActiva: alertaSonora,
       zonaHoraria: zonaHoraria || 'America/Panama',
       moduloInventarioYFinanzasActivo: esSuperAdmin ? moduloInventarioYFinanzas : configuracion.moduloInventarioYFinanzasActivo,
